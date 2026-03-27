@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>منصة إتمام</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --primary:#0f2744;--primary2:#1a3a5c;--accent:#1db954;
+  --danger:#ef4444;--warn:#f59e0b;--blue:#3b82f6;--purple:#8b5cf6;
+  --bg:#f4f6f9;--border:#e2e8f0;--txt:#1e293b;--muted:#64748b;
+  --shadow:0 2px 12px rgba(0,0,0,.07);--shadowmd:0 4px 20px rgba(0,0,0,.1);
+  --r:12px;--rs:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);direction:rtl;min-height:100vh;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(1.2)}}
+@keyframes su{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* LOADING OVERLAY */
+#loadingOverlay{position:fixed;inset:0;background:rgba(15,39,68,.97);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;}
+#loadingOverlay.hide{display:none;}
+.spin-ring{width:52px;height:52px;border:4px solid rgba(255,255,255,.15);border-top-color:#1db954;border-radius:50%;animation:spin .8s linear infinite;}
+.loading-txt{color:rgba(255,255,255,.7);font-size:15px;font-weight:600;}
+
+/* LANDING */
+#landingPage{display:flex;flex-direction:column;min-height:100vh;background:#151e2f;position:relative;overflow:hidden;}
+#landingPage::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:55px 55px;pointer-events:none;}
+.l-nav{display:flex;align-items:center;justify-content:space-between;padding:16px 40px;position:relative;z-index:2;}
+.l-brand{display:flex;align-items:center;gap:10px;color:#fff;font-size:18px;font-weight:800;}
+.l-brand-icon{width:34px;height:34px;background:linear-gradient(135deg,#1db954,#0d9488);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;}
+.l-navlinks{display:flex;gap:4px;direction:ltr;}
+.l-navlink{padding:7px 18px;border-radius:20px;font-size:13px;color:rgba(255,255,255,.6);cursor:pointer;transition:.2s;font-weight:500;}
+.l-navlink.active,.l-navlink:hover{background:rgba(255,255,255,.12);color:#fff;}
+.l-hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 20px 60px;position:relative;z-index:2;text-align:center;}
+.l-title{font-size:76px;font-weight:900;color:#fff;line-height:1;margin-bottom:6px;}
+.l-line{width:76px;height:3px;background:#1db954;border-radius:2px;margin:0 auto 16px;}
+.l-sub{font-size:20px;color:rgba(255,255,255,.5);margin-bottom:38px;}
+.l-card{background:#fff;border-radius:18px;padding:36px 50px 40px;width:100%;max-width:400px;box-shadow:0 24px 80px rgba(0,0,0,.4);}
+.l-logos{display:flex;align-items:center;justify-content:center;margin-bottom:28px;}
+.l-logo-side{display:flex;flex-direction:column;align-items:center;gap:5px;padding:0 20px;}
+.l-logo-sep{width:1px;height:54px;background:#e2e8f0;}
+.logo-label{font-size:10px;font-weight:700;color:#64748b;letter-spacing:.05em;}
+.btn-enter{width:100%;padding:15px;background:#1a1a2e;color:#fff;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:.2s;}
+.btn-enter:hover{background:#0f2744;transform:translateY(-1px);}
+
+/* LOGIN */
+#loginOverlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:none;align-items:center;justify-content:center;}
+#loginOverlay.show{display:flex;}
+.login-box{background:#fff;border-radius:18px;padding:40px;width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.login-head{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:24px;}
+.login-head-icon{width:42px;height:42px;background:linear-gradient(135deg,#1db954,#0d9488);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;}
+.login-head-txt{font-size:22px;font-weight:800;color:var(--primary);}
+.ig{margin-bottom:14px;}
+.ig label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px;}
+.ig input,.ig select,.ig textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:var(--rs);font-family:'Tajawal',sans-serif;font-size:14px;outline:none;transition:.2s;}
+.ig input:focus,.ig select:focus,.ig textarea:focus{border-color:var(--primary);}
+.ig textarea{resize:vertical;min-height:75px;}
+.ig select{appearance:none;}
+.ig-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.btn-login{width:100%;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:var(--rs);font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:.2s;margin-top:4px;}
+.btn-login:hover{background:var(--primary2);}
+.login-hint{text-align:center;margin-top:14px;font-size:11.5px;color:var(--muted);line-height:1.9;}
+.login-hint b{color:var(--primary);}
+
+/* APP */
+#appLayout{display:none;}
+#appLayout.show{display:flex;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{width:255px;background:var(--primary);color:#fff;display:flex;flex-direction:column;position:fixed;top:0;right:0;bottom:0;z-index:100;overflow-y:auto;}
+.sb-logo{padding:20px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.sb-logo-icon{width:36px;height:36px;background:linear-gradient(135deg,#1db954,#0d9488);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.sb-logo-txt{font-size:20px;font-weight:800;}
+.sb-nav{flex:1;padding:12px 0;}
+.sb-sec{padding:7px 18px 3px;font-size:10px;font-weight:600;color:rgba(255,255,255,.3);letter-spacing:.08em;text-transform:uppercase;}
+.sb-item{display:flex;align-items:center;gap:10px;padding:10px 18px;cursor:pointer;font-size:13px;font-weight:500;color:rgba(255,255,255,.7);position:relative;transition:.15s;}
+.sb-item:hover,.sb-item.on{background:rgba(255,255,255,.1);color:#fff;}
+.sb-item.on::before{content:'';position:absolute;right:0;top:50%;transform:translateY(-50%);width:3px;height:60%;background:var(--accent);border-radius:3px 0 0 3px;}
+.sb-item i{width:18px;text-align:center;font-size:13px;}
+.sb-badge{margin-right:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;}
+.sb-foot{padding:13px 18px;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px;cursor:pointer;flex-shrink:0;}
+.sb-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;}
+
+/* MAIN */
+.main{margin-right:255px;display:flex;flex-direction:column;min-height:100vh;}
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 26px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:16px;font-weight:700;color:var(--primary);}
+.topbar-right{display:flex;align-items:center;gap:9px;}
+.icon-btn{width:36px;height:36px;border-radius:var(--rs);border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:14px;position:relative;transition:.2s;}
+.icon-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
+.ndot{position:absolute;top:4px;right:4px;width:8px;height:8px;background:var(--danger);border-radius:50%;border:2px solid #fff;display:none;animation:pulse 1.5s infinite;}
+.ndot.show{display:block;}
+.btn-new{background:var(--primary);color:#fff;border:none;padding:8px 16px;border-radius:var(--rs);font-family:'Tajawal',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:.2s;}
+.btn-new:hover{opacity:.88;}
+.body{flex:1;padding:22px 26px;}
+.pg{display:none;}.pg.on{display:block;}
+
+/* NOTIFICATIONS */
+#notifPanel{position:fixed;top:60px;left:0;width:380px;background:#fff;border-radius:0 0 var(--r) var(--r);box-shadow:var(--shadowmd);border:1px solid var(--border);border-top:none;z-index:200;display:none;flex-direction:column;max-height:500px;overflow:hidden;}
+#notifPanel.show{display:flex;}
+.np-head{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#f8fafc;}
+.np-title{font-size:13.5px;font-weight:800;color:var(--primary);}
+.np-actions{display:flex;gap:6px;}
+.np-btn{font-size:11px;color:var(--blue);cursor:pointer;padding:3px 8px;border-radius:5px;background:#eff6ff;font-weight:600;}
+.np-list{flex:1;overflow-y:auto;}
+.np-item{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;gap:10px;cursor:pointer;transition:.15s;}
+.np-item.unread{background:#f0f7ff;}
+.np-item:hover{background:#f1f5f9;}
+.np-ico{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+.np-ico.g{background:#f0fdf4;color:#22c55e;}.np-ico.r{background:#fef2f2;color:#ef4444;}
+.np-ico.b{background:#eff6ff;color:#3b82f6;}.np-ico.y{background:#fffbeb;color:#f59e0b;}.np-ico.p{background:#faf5ff;color:#8b5cf6;}
+.np-txt{font-size:12.5px;font-weight:600;color:var(--txt);}
+.np-time{font-size:10px;color:var(--muted);margin-top:2px;}
+.np-unread-dot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0;margin-top:5px;}
+.np-empty{padding:30px;text-align:center;color:var(--muted);font-size:13px;}
+
+/* TASK CARDS */
+.dept-page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.dept-page-title{font-size:20px;font-weight:800;color:var(--primary);}
+.progress-bar-row{height:3px;background:var(--border);border-radius:3px;margin-bottom:18px;display:flex;gap:2px;}
+.pb-b{flex:1;background:#3b82f6;border-radius:3px;}.pb-g{flex:1;background:#22c55e;border-radius:3px;}
+.filter-tabs{display:flex;gap:7px;margin-bottom:18px;flex-wrap:wrap;align-items:center;}
+.ftab{padding:6px 14px;border-radius:30px;font-family:'Tajawal',sans-serif;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:#fff;cursor:pointer;color:var(--muted);transition:.2s;}
+.ftab.on,.ftab:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
+.srch-inp{padding:7px 14px;border:1.5px solid var(--border);border-radius:30px;font-family:'Tajawal',sans-serif;font-size:12.5px;outline:none;min-width:190px;margin-right:auto;}
+.srch-inp:focus{border-color:var(--primary);}
+.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.task-card{border-radius:var(--r);padding:18px 18px 14px;display:flex;flex-direction:column;gap:8px;border:1.5px solid transparent;position:relative;transition:all .2s;box-shadow:var(--shadow);}
+.task-card:hover{transform:translateY(-2px);box-shadow:var(--shadowmd);}
+.task-card.prio-urgent{background:#fff0f0;border-color:#fca5a5;border-top:4px solid #ef4444;}
+.task-card.prio-normal{background:#f0fff4;border-color:#86efac;border-top:4px solid #22c55e;}
+.task-card.prio-low{background:#eff8ff;border-color:#93c5fd;border-top:4px solid #3b82f6;}
+.task-card.prio-closed{background:#f8fafc;border-color:#cbd5e1;border-top:4px solid #94a3b8;}
+.card-new-dot{position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:var(--danger);border:2px solid #fff;animation:pulse 1.5s infinite;display:none;}
+.card-new-dot.show{display:block;}
+.card-prio-tag{position:absolute;top:8px;left:26px;font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;}
+.task-card.prio-urgent .card-prio-tag{background:#fee2e2;color:#dc2626;}
+.task-card.prio-normal .card-prio-tag{background:#dcfce7;color:#16a34a;}
+.task-card.prio-low .card-prio-tag{background:#dbeafe;color:#2563eb;}
+.task-card.prio-closed .card-prio-tag{background:#f1f5f9;color:#64748b;}
+.cabt{padding:5px 13px;border-radius:6px;font-size:12px;font-weight:600;border:1px solid var(--border);background:#fff;cursor:pointer;font-family:'Tajawal',sans-serif;transition:.15s;color:var(--txt);}
+.cabt:hover{background:#f1f5f9;}
+.cabt.del{border-color:#fca5a5;color:#dc2626;}.cabt.del:hover{background:#fef2f2;}
+.cabt.support{border-color:#fde68a;color:#d97706;background:#fffbeb;}.cabt.support:hover{background:#fef3c7;}
+.cabt.support.active{background:#d97706;color:#fff;border-color:#d97706;}
+.cabt.submit{border-color:#86efac;color:#16a34a;background:#f0fdf4;}.cabt.submit:hover{background:#dcfce7;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);grid-column:1/-1;}
+.empty-state i{font-size:48px;opacity:.2;margin-bottom:16px;display:block;}
+
+/* DEPARTMENTS */
+.page-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.page-title{font-size:18px;font-weight:800;color:var(--primary);}
+.dept-search{padding:8px 14px;border:1.5px solid var(--border);border-radius:30px;font-family:'Tajawal',sans-serif;font-size:13px;outline:none;min-width:210px;}
+.dept-search:focus{border-color:var(--primary);}
+.dept-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.dept-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--r);padding:18px 20px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:600;color:var(--txt);position:relative;overflow:hidden;}
+.dept-card::after{content:'';position:absolute;right:0;top:0;bottom:0;width:4px;background:transparent;transition:.2s;}
+.dept-card:hover{border-color:#86efac;box-shadow:0 4px 18px rgba(29,185,84,.12);transform:translateY(-1px);}
+.dept-card:hover::after{background:var(--accent);}
+.dept-card.hl1{background:#fefce8;border-color:#fde047;}.dept-card.hl1::after{background:var(--warn);}
+.dept-card.hl2{background:#f0fdf4;border-color:#86efac;}.dept-card.hl2::after{background:var(--accent);}
+.dept-left{display:flex;align-items:center;gap:10px;}
+.dept-ico{width:34px;height:34px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--primary);flex-shrink:0;}
+.dept-cnt{font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:#f1f5f9;color:var(--muted);}
+.dept-card:hover .dept-cnt{background:#dcfce7;color:#16a34a;}
+.dept-arr{color:var(--muted);font-size:12px;transition:.2s;}
+.dept-card:hover .dept-arr{color:var(--accent);}
+.back-btn{display:flex;align-items:center;gap:7px;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:16px;width:fit-content;}
+.back-btn:hover{color:var(--accent);}
+.mini-stats{display:flex;gap:10px;margin-bottom:18px;}
+.mstat{background:#fff;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);flex:1;}
+.mstat-ico{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+
+/* DASHBOARD */
+.health-card{background:linear-gradient(135deg,var(--primary),var(--primary2));border-radius:var(--r);padding:22px 26px;margin-bottom:20px;display:flex;align-items:center;gap:32px;}
+.hcs{display:flex;gap:32px;flex:1;}
+.hcsv{font-size:28px;font-weight:800;color:#fff;}.hcsv.r{color:#ef4444;}.hcsv.g{color:#1db954;}
+.hcsl{font-size:10.5px;color:rgba(255,255,255,.55);}
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;}
+.sc{background:#fff;border-radius:var(--r);padding:15px;display:flex;align-items:center;gap:11px;box-shadow:var(--shadow);}
+.sc-ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.ic-b{background:#eff6ff;color:#3b82f6;}.ic-g{background:#f0fdf4;color:#22c55e;}
+.ic-r{background:#fef2f2;color:#ef4444;}.ic-y{background:#fffbeb;color:#f59e0b;}.ic-p{background:#faf5ff;color:#8b5cf6;}
+.sc-val{font-size:22px;font-weight:800;}.sc-lbl{font-size:10.5px;color:var(--muted);}
+.dash-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+.dcard{background:#fff;border-radius:var(--r);padding:18px;box-shadow:var(--shadow);}
+.dcard-title{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:7px;margin-bottom:16px;}
+.chart-h{position:relative;height:200px;}
+.ach-item{margin-bottom:14px;}
+.ach-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.ach-name{font-size:13px;font-weight:600;}
+.ach-meta{font-size:11px;color:var(--muted);}
+.ach-bar-wrap{height:22px;background:#f1f5f9;border-radius:30px;overflow:hidden;}
+.ach-bar{height:100%;border-radius:30px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;transition:width .6s;min-width:36px;}
+.ach-bar.green{background:linear-gradient(90deg,#22c55e,#16a34a);}
+.ach-bar.yellow{background:linear-gradient(90deg,#f59e0b,#d97706);}
+.ach-bar.red{background:linear-gradient(90deg,#ef4444,#dc2626);}
+.ann-stat-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:var(--rs);margin-bottom:8px;}
+.ann-stat-item.yb{background:#fffbeb;}.ann-stat-item.ob{background:#fff7ed;}.ann-stat-item.gb{background:#f0fdf4;}
+.ann-stat-val{font-size:16px;font-weight:800;}
+.ann-stat-val.y{color:#f59e0b;}.ann-stat-val.o{color:#ea580c;}.ann-stat-val.g{color:#16a34a;}
+
+/* MODAL */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-ov.show{display:flex;}
+.modal-box{background:#fff;border-radius:var(--r);padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;animation:su .2s ease;}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.modal-ttl{font-size:17px;font-weight:800;color:var(--primary);}
+.modal-cls{width:28px;height:28px;border-radius:50%;border:none;background:#f1f5f9;cursor:pointer;font-size:16px;color:var(--muted);display:flex;align-items:center;justify-content:center;}
+.file-upload-area{border:2px dashed var(--border);border-radius:var(--rs);padding:16px;text-align:center;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;color:var(--muted);}
+.file-upload-area:hover{border-color:var(--primary);color:var(--primary);}
+.file-upload-area input{display:none;}
+.modal-foot{display:flex;gap:10px;margin-top:8px;padding-top:16px;border-top:1px solid var(--border);}
+.btn-ok{flex:2;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:var(--rs);font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:.2s;}
+.btn-ok:hover{background:var(--primary2);}
+.btn-cc{flex:1;padding:12px;border:1.5px solid var(--border);border-radius:var(--rs);background:#fff;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:600;cursor:pointer;color:var(--muted);transition:.2s;}
+.btn-cc:hover{border-color:var(--danger);color:var(--danger);}
+
+/* CHAT */
+.chat-wrap{display:flex;height:calc(100vh - 102px);gap:15px;}
+.chat-side{width:255px;background:#fff;border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;}
+.chat-main-p{flex:1;background:#fff;border-radius:var(--r);box-shadow:var(--shadow);display:flex;flex-direction:column;}
+.chat-room{padding:10px 13px;display:flex;align-items:center;gap:9px;cursor:pointer;border-bottom:1px solid var(--border);transition:.15s;}
+.chat-room:hover,.chat-room.on{background:#f0f4f8;}
+.cr-av{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;}
+.chat-hdr{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;}
+.chat-msgs{flex:1;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:9px;}
+.msg{max-width:68%;}.msg.me{align-self:flex-start;}.msg.them{align-self:flex-end;}
+.msg-bub{padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.5;}
+.msg.me .msg-bub{background:var(--primary);color:#fff;border-radius:12px 12px 4px 12px;}
+.msg.them .msg-bub{background:#f1f5f9;color:var(--txt);border-radius:12px 12px 12px 4px;}
+.msg-t{font-size:10px;color:var(--muted);margin-top:2px;}.msg.me .msg-t{text-align:right;}
+.chat-inp-area{padding:12px 15px;border-top:1px solid var(--border);display:flex;gap:7px;align-items:center;}
+.chat-inp-f{flex:1;padding:8px 13px;border:1.5px solid var(--border);border-radius:30px;font-family:'Tajawal',sans-serif;font-size:13px;outline:none;}
+.chat-inp-f:focus{border-color:var(--primary);}
+.send-btn{width:36px;height:36px;background:var(--primary);color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;}
+
+/* ANNOUNCEMENTS */
+.ann-card{background:#fff;border-radius:var(--r);padding:20px;box-shadow:var(--shadow);border-right:4px solid var(--primary);display:flex;gap:14px;margin-bottom:14px;position:relative;}
+.ann-ico{width:42px;height:42px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.ann-urgent-tag{display:inline-flex;align-items:center;gap:4px;background:#fef2f2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-bottom:6px;}
+.ann-read-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;background:#f0fdf4;color:#16a34a;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #86efac;transition:.2s;margin-top:8px;}
+.ann-read-btn:hover{background:#dcfce7;}
+.ann-read-btn.done{background:#f1f5f9;color:var(--muted);border-color:var(--border);cursor:default;}
+
+/* USERS */
+.users-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;}
+.ucard{background:#fff;border-radius:var(--r);padding:18px;box-shadow:var(--shadow);text-align:center;}
+.ucard-av{width:50px;height:50px;border-radius:50%;margin:0 auto 9px;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:#fff;}
+
+/* VIEW MODAL */
+.view-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;}
+.view-val{font-size:13.5px;color:var(--txt);}
+.cmt-item{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid var(--border);}
+.cmt-av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;}
+
+/* DEPT KPI */
+.dept-kpi-card{background:#fff;border-radius:var(--r);padding:18px;box-shadow:var(--shadow);margin-bottom:16px;}
+.dept-kpi-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.dept-kpi-title{font-size:15px;font-weight:800;color:var(--primary);}
+
+/* COMPLAINTS */
+.complaint-card{background:#fff;border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow);margin-bottom:14px;border-right:5px solid #94a3b8;cursor:pointer;transition:all .2s;position:relative;}
+.complaint-card:hover{box-shadow:var(--shadowmd);transform:translateY(-1px);}
+.complaint-card.sev-critical{border-right-color:#ef4444;}
+.complaint-card.sev-high{border-right-color:#f97316;}
+.complaint-card.sev-medium{border-right-color:#f59e0b;}
+.complaint-card.sev-low{border-right-color:#22c55e;}
+.c-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;}
+.c-number{font-size:11px;font-weight:800;color:var(--muted);background:#f1f5f9;padding:3px 8px;border-radius:6px;flex-shrink:0;margin-top:2px;}
+.c-title{font-size:15px;font-weight:800;color:var(--txt);flex:1;}
+.c-badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.c-badge{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;}
+.c-badge.type-op{background:#eff6ff;color:#2563eb;}.c-badge.type-tech{background:#faf5ff;color:#7c3aed;}
+.c-badge.type-svc{background:#f0fdf4;color:#16a34a;}.c-badge.type-safe{background:#fef2f2;color:#dc2626;}
+.c-badge.type-fin{background:#fffbeb;color:#d97706;}.c-badge.type-oth{background:#f8fafc;color:#64748b;}
+.c-badge.st-open{background:#fef2f2;color:#dc2626;}.c-badge.st-inprogress{background:#fffbeb;color:#d97706;}
+.c-badge.st-resolved{background:#f0fdf4;color:#16a34a;}.c-badge.st-closed{background:#f8fafc;color:#64748b;}
+.c-badge.sv-critical{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;}
+.c-badge.sv-high{background:#fff7ed;color:#ea580c;}.c-badge.sv-medium{background:#fffbeb;color:#d97706;}
+.c-badge.sv-low{background:#f0fdf4;color:#16a34a;}
+.c-meta{display:flex;align-items:center;gap:14px;font-size:11px;color:var(--muted);flex-wrap:wrap;}
+.c-desc{font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:10px;padding:8px 12px;background:#f8fafc;border-radius:6px;}
+.c-progress-wrap{height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;margin-bottom:8px;}
+.c-progress-bar{height:100%;border-radius:3px;transition:width .4s;}
+.timeline-item{display:flex;gap:12px;margin-bottom:14px;position:relative;}
+.timeline-item::before{content:'';position:absolute;right:16px;top:28px;bottom:-14px;width:2px;background:#e2e8f0;}
+.timeline-item:last-child::before{display:none;}
+.tl-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;border:2px solid #fff;box-shadow:0 0 0 2px var(--border);}
+.tl-content{flex:1;background:#f8fafc;border-radius:8px;padding:10px 13px;}
+.tl-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.tl-author{font-size:12px;font-weight:700;color:var(--txt);}
+.tl-time{font-size:10.5px;color:var(--muted);}
+.tl-text{font-size:12.5px;color:var(--txt);line-height:1.5;}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:20px;left:20px;z-index:999;display:flex;flex-direction:column;gap:7px;}
+.toast{background:#fff;border-radius:var(--rs);padding:11px 15px;box-shadow:var(--shadowmd);border-right:4px solid var(--accent);display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:600;transform:translateX(-130%);transition:.3s;min-width:250px;}
+.toast.show{transform:translateX(0);}
+.toast.err{border-right-color:var(--danger);}
+.toast.warn{border-right-color:var(--warn);}
+.toast i{font-size:14px;color:var(--accent);}.toast.err i{color:var(--danger);}.toast.warn i{color:var(--warn);}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:#f1f5f9;}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
+@media(max-width:900px){.cards-grid{grid-template-columns:1fr 1fr;}.dash-row{grid-template-columns:1fr;}.stats-row{grid-template-columns:repeat(3,1fr);}}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadingOverlay" class="hide">
+  <div class="spin-ring"></div>
+  <div class="loading-txt">جاري التحميل...</div>
+</div>
+
+<!-- LANDING -->
+<div id="landingPage">
+  <nav class="l-nav">
+    <div class="l-brand"><div class="l-brand-icon"><i class="fas fa-check-circle"></i></div>منصة إتمام</div>
+    <div class="l-navlinks">
+      <div class="l-navlink active">الرئيسية</div>
+      <div class="l-navlink">عن المنصة</div>
+    </div>
+  </nav>
+  <div class="l-hero">
+    <div class="l-title">منصة إتمام</div>
+    <div class="l-line"></div>
+    <div class="l-sub">سير ومهام الحج...</div>
+    <div class="l-card">
+      <div class="l-logos">
+        <div class="l-logo-side">
+          <svg width="56" height="56" viewBox="0 0 80 80" fill="none"><path d="M40 5 L73 24 L73 56 L40 75 L7 56 L7 24 Z" stroke="#2d6a4f" stroke-width="2.5" fill="none"/><circle cx="40" cy="40" r="10" fill="#2d6a4f" opacity=".5"/><circle cx="40" cy="40" r="4" fill="#2d6a4f"/><line x1="40" y1="5" x2="40" y2="18" stroke="#2d6a4f" stroke-width="2"/></svg>
+          <div class="logo-label">الحويري</div>
+        </div>
+        <div class="l-logo-sep"></div>
+        <div class="l-logo-side">
+          <svg width="56" height="56" viewBox="0 0 80 80" fill="none"><rect x="8" y="8" width="64" height="64" rx="13" fill="#1a1a2e"/><path d="M40 17 L59 29 L59 51 L40 63 L21 51 L21 29 Z" stroke="#c9a84c" stroke-width="2.5" fill="none"/><circle cx="40" cy="40" r="6" fill="#c9a84c"/></svg>
+          <div class="logo-label">ITMAM</div>
+        </div>
+      </div>
+      <button class="btn-enter" id="btnEnter"><i class="fas fa-chevron-left"></i> الدخول إلى البوابة الداخلية</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <div class="login-head">
+      <div class="login-head-icon"><i class="fas fa-check-circle"></i></div>
+      <div class="login-head-txt">إتمام</div>
+    </div>
+    <h3 style="text-align:center;font-size:17px;font-weight:700;color:var(--primary);margin-bottom:4px">تسجيل الدخول</h3>
+    <p style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:22px">أدخل بيانات حسابك للدخول إلى المنصة</p>
+    <div class="ig"><label>اسم المستخدم</label><input type="text" id="inpUser" placeholder="أدخل اسم المستخدم"></div>
+    <div class="ig"><label>كلمة المرور</label><input type="password" id="inpPass" placeholder="أدخل كلمة المرور"></div>
+    <button class="btn-login" id="btnLogin">دخول</button>
+    <div class="login-hint" id="loginHint"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appLayout">
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon"><i class="fas fa-check-circle"></i></div>
+      <div class="sb-logo-txt">إتمام</div>
+    </div>
+    <nav class="sb-nav" id="sbNav"></nav>
+    <div class="sb-foot" id="sbFoot">
+      <div class="sb-av" id="sbAv">م</div>
+      <div>
+        <div style="font-size:12.5px;font-weight:600;color:#fff" id="sbName">المسؤول</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,.4)" id="sbRole">مسؤول النظام</div>
+      </div>
+      <i class="fas fa-sign-out-alt" style="color:rgba(255,255,255,.3);margin-right:auto;font-size:12px"></i>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topTitle">لوحة التحكم</div>
+      <div class="topbar-right">
+        <div class="icon-btn" id="btnNotif"><i class="fas fa-bell"></i><div class="ndot" id="ndot"></div></div>
+        <button class="btn-new" id="headerNewBtn" style="display:none"><i class="fas fa-plus"></i> إضافة مهمة</button>
+      </div>
+    </div>
+
+    <div id="notifPanel">
+      <div class="np-head">
+        <div class="np-title"><i class="fas fa-bell" style="color:var(--warn);margin-left:6px"></i> الإشعارات</div>
+        <div class="np-actions">
+          <div class="np-btn" onclick="markAllRead()">تحديد الكل مقروء</div>
+          <div class="np-btn" style="background:#fef2f2;color:#dc2626" onclick="clearAllNotifs()">مسح الكل</div>
+        </div>
+      </div>
+      <div class="np-list" id="notifList"></div>
+    </div>
+
+    <div class="body">
+      <!-- DASHBOARD -->
+      <div class="pg on" id="pg-dashboard">
+        <div class="health-card">
+          <div class="hcs">
+            <div><div class="hcsv r" id="hc-u">0</div><div class="hcsl">مهام عاجلة</div></div>
+            <div><div class="hcsv r" id="hc-rp">0%</div><div class="hcsl">نسبة الرفض</div></div>
+            <div><div class="hcsv g" id="hc-dp">0%</div><div class="hcsl">نسبة الإنجاز</div></div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:2px">مؤشر الصحة</div>
+            <div style="font-size:17px;font-weight:800;color:#ef4444" id="hc-status">يحتاج تحسين</div>
+          </div>
+          <div style="position:relative;width:78px;height:78px">
+            <canvas id="healthChart" width="78" height="78"></canvas>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+              <div style="font-size:18px;font-weight:800;color:#fff" id="hc-score">0</div>
+              <div style="font-size:9px;color:rgba(255,255,255,.4)">/100</div>
+            </div>
+          </div>
+        </div>
+        <div class="stats-row">
+          <div class="sc"><div class="sc-ico ic-p"><i class="fas fa-bullseye"></i></div><div><div class="sc-val" id="ds-total">0</div><div class="sc-lbl">إجمالي المهام</div></div></div>
+          <div class="sc"><div class="sc-ico ic-g"><i class="fas fa-check-circle"></i></div><div><div class="sc-val" id="ds-done">0</div><div class="sc-lbl">مقبولة/مكتملة</div></div></div>
+          <div class="sc"><div class="sc-ico ic-r"><i class="fas fa-times-circle"></i></div><div><div class="sc-val" id="ds-rej">0</div><div class="sc-lbl">مرفوضة</div></div></div>
+          <div class="sc"><div class="sc-ico ic-y"><i class="fas fa-clock"></i></div><div><div class="sc-val" id="ds-rev">0</div><div class="sc-lbl">قيد المراجعة</div></div></div>
+          <div class="sc"><div class="sc-ico" style="background:#fffbeb;color:#d97706"><i class="fas fa-hands-helping"></i></div><div><div class="sc-val" id="ds-support">0</div><div class="sc-lbl">تحتاج دعم</div></div></div>
+        </div>
+        <div class="dcard" style="margin-bottom:20px">
+          <div class="dcard-title"><i class="fas fa-chart-bar"></i> مقارنة الإدارات</div>
+          <div class="chart-h" style="height:220px"><canvas id="compChart"></canvas></div>
+        </div>
+        <div class="dcard" style="margin-bottom:20px">
+          <div class="dcard-title"><i class="fas fa-tasks"></i> نسب الإنجاز التفصيلية</div>
+          <div id="achBars"></div>
+        </div>
+        <div class="dash-row">
+          <div class="dcard">
+            <div class="dcard-title"><i class="fas fa-bolt" style="color:var(--warn)"></i> إحصاء التعاميم</div>
+            <div id="annStats"></div>
+          </div>
+          <div class="dcard">
+            <div class="dcard-title"><i class="fas fa-chart-pie"></i> توزيع الحالات</div>
+            <div class="chart-h" style="height:170px"><canvas id="statusChart"></canvas></div>
+            <div style="display:flex;gap:13px;justify-content:center;margin-top:9px;font-size:11px">
+              <span style="color:#16a34a">● مقبولة</span><span style="color:#f59e0b">● مراجعة</span><span style="color:#ef4444">● مرفوضة</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEPARTMENTS -->
+      <div class="pg" id="pg-departments">
+        <div class="page-hdr">
+          <div class="page-title">الإدارات</div>
+          <input type="text" class="dept-search" id="deptSearch" placeholder="🔍 بحث في الإدارات...">
+        </div>
+        <div class="dept-grid" id="deptGrid"></div>
+      </div>
+
+      <!-- DEPT TASKS -->
+      <div class="pg" id="pg-dept-tasks">
+        <div class="back-btn" id="btnBack"><i class="fas fa-chevron-right"></i> العودة للإدارات</div>
+        <div class="dept-page-hdr">
+          <div>
+            <div class="dept-page-title" id="dtTitle">مهام الإدارة</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px" id="dtSub">إدارة ومتابعة المهام</div>
+          </div>
+          <button class="btn-new" id="btnNewDept" style="display:none" onclick="openTaskModal()"><i class="fas fa-plus"></i> إضافة مهمة</button>
+        </div>
+        <div class="progress-bar-row"><div class="pb-b"></div><div class="pb-g"></div></div>
+        <div class="mini-stats" id="miniStats"></div>
+        <div class="filter-tabs">
+          <input type="text" class="srch-inp" id="deptSrch" placeholder="🔍 بحث في المهام...">
+          <button class="ftab on" data-f="all">الكل</button>
+          <button class="ftab" data-f="review">قيد المراجعة</button>
+          <button class="ftab" data-f="accepted">مقبولة</button>
+          <button class="ftab" data-f="rejected">مرفوضة</button>
+          <button class="ftab" data-f="completed">مكتملة</button>
+          <button class="ftab" data-f="support">🆘 تحتاج دعم</button>
+        </div>
+        <div class="cards-grid" id="deptCardsGrid"></div>
+      </div>
+
+      <!-- MY TASKS -->
+      <div class="pg" id="pg-my-tasks">
+        <div class="dept-page-hdr">
+          <div>
+            <div class="dept-page-title" id="myTasksTitle">مهامي</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px" id="myTasksSub">المهام المسندة لإدارتك</div>
+          </div>
+        </div>
+        <div class="progress-bar-row"><div class="pb-b"></div><div class="pb-g"></div></div>
+        <div class="mini-stats" id="myMiniStats"></div>
+        <div class="filter-tabs">
+          <input type="text" class="srch-inp" id="myTaskSrch" placeholder="🔍 بحث...">
+          <button class="ftab on" data-mf="all">الكل</button>
+          <button class="ftab" data-mf="review">قيد المراجعة</button>
+          <button class="ftab" data-mf="accepted">مقبولة</button>
+          <button class="ftab" data-mf="rejected">مرفوضة</button>
+          <button class="ftab" data-mf="completed">مكتملة</button>
+          <button class="ftab" data-mf="support">🆘 دعم</button>
+        </div>
+        <div class="cards-grid" id="myTasksGrid"></div>
+      </div>
+
+      <!-- ALL TASKS -->
+      <div class="pg" id="pg-tasks">
+        <div class="dept-page-hdr">
+          <div class="dept-page-title">كل المهام</div>
+          <button class="btn-new" onclick="openTaskModal()"><i class="fas fa-plus"></i> إضافة مهمة</button>
+        </div>
+        <div class="filter-tabs">
+          <input type="text" class="srch-inp" placeholder="🔍 بحث...">
+          <button class="ftab on" data-af="all">الكل</button>
+          <button class="ftab" data-af="review">قيد المراجعة</button>
+          <button class="ftab" data-af="accepted">مقبولة</button>
+          <button class="ftab" data-af="rejected">مرفوضة</button>
+          <button class="ftab" data-af="completed">مكتملة</button>
+          <button class="ftab" data-af="support">🆘 دعم</button>
+        </div>
+        <div class="cards-grid" id="allCardsGrid"></div>
+      </div>
+
+      <!-- KPI TASKS -->
+      <div class="pg" id="pg-kpi-tasks">
+        <div class="dept-page-hdr">
+          <div><div class="dept-page-title">مهام مؤشرات الدليل</div></div>
+          <button class="btn-new" onclick="showModal('kpiTaskModal')"><i class="fas fa-plus"></i> إضافة مهمة مؤشر</button>
+        </div>
+        <div class="cards-grid" id="kpiTasksGrid"></div>
+      </div>
+
+      <!-- MY KPI -->
+      <div class="pg" id="pg-my-kpi">
+        <div class="dept-page-hdr">
+          <div><div class="dept-page-title">مؤشرات إدارتي</div></div>
+        </div>
+        <div class="dept-kpi-card">
+          <div class="dept-kpi-header"><div class="dept-kpi-title" id="deptKpiTitle">نسب الإنجاز</div></div>
+          <div id="deptKpiBars"></div>
+        </div>
+        <div class="dash-row">
+          <div class="dcard"><div class="dcard-title"><i class="fas fa-chart-pie"></i> توزيع الحالات</div><div class="chart-h" style="height:170px"><canvas id="myStatusChart"></canvas></div></div>
+          <div class="dcard"><div class="dcard-title"><i class="fas fa-exclamation-triangle"></i> ملخص إدارتي</div><div id="myDeptSummary"></div></div>
+        </div>
+      </div>
+
+      <!-- ANNOUNCEMENTS -->
+      <div class="pg" id="pg-announcements">
+        <div class="page-hdr">
+          <div class="page-title">التعاميم</div>
+          <button class="btn-new" id="btnNewAnn" style="display:none"><i class="fas fa-plus"></i> إضافة تعميم</button>
+        </div>
+        <div id="annList"></div>
+      </div>
+
+      <!-- COMPLAINTS -->
+      <div class="pg" id="pg-complaints">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:20px;font-weight:800;color:var(--primary)">نظام البلاغات والمتابعة</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">تتبع وإدارة البلاغات عبر الإدارات</div>
+          </div>
+          <button class="btn-new" id="btnNewComplaint"><i class="fas fa-plus"></i> رفع بلاغ جديد</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px" id="complaintStats"></div>
+        <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
+          <input type="text" class="srch-inp" id="complaintSearch" placeholder="🔍 بحث في البلاغات..." oninput="renderComplaints()">
+          <button class="ftab on" onclick="filterComplaints('all',this)">الكل</button>
+          <button class="ftab" onclick="filterComplaints('open',this)">🔴 مفتوح</button>
+          <button class="ftab" onclick="filterComplaints('inprogress',this)">🟡 جاري المعالجة</button>
+          <button class="ftab" onclick="filterComplaints('resolved',this)">🟢 محلول</button>
+          <button class="ftab" onclick="filterComplaints('closed',this)">⚫ مغلق</button>
+        </div>
+        <div id="complaintsList"></div>
+      </div>
+
+      <!-- CHAT -->
+      <div class="pg" id="pg-chat">
+        <div class="page-hdr"><div class="page-title">الدردشة</div></div>
+        <div class="chat-wrap">
+          <div class="chat-side">
+            <div style="padding:10px"><input type="text" style="width:100%;padding:7px 12px;border:1.5px solid var(--border);border-radius:30px;font-family:'Tajawal',sans-serif;font-size:12.5px;outline:none" placeholder="🔍 بحث..."></div>
+            <div id="chatRooms"></div>
+          </div>
+          <div class="chat-main-p">
+            <div class="chat-hdr" id="chatHdr">
+              <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#0f2744,#3b82f6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700">ع</div>
+              <div><div style="font-size:13.5px;font-weight:700">القناة العامة</div><div style="font-size:10.5px;color:var(--accent)">● متصل</div></div>
+            </div>
+            <div class="chat-msgs" id="chatMsgs"></div>
+            <div class="chat-inp-area">
+              <input type="text" class="chat-inp-f" id="chatInp" placeholder="اكتب رسالتك...">
+              <button class="send-btn" id="btnSend"><i class="fas fa-paper-plane"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- USERS -->
+      <div class="pg" id="pg-users">
+        <div class="page-hdr">
+          <div class="page-title">إدارة المستخدمين</div>
+          <button class="btn-new" onclick="showModal('userModal')"><i class="fas fa-plus"></i> إضافة مستخدم</button>
+        </div>
+        <div class="users-grid" id="usersGrid"></div>
+      </div>
+
+      <!-- KPI PAGE -->
+      <div class="pg" id="pg-kpi">
+        <div class="page-hdr"><div class="page-title">مؤشرات الأداء</div></div>
+        <div class="health-card" style="margin-bottom:18px">
+          <div class="hcs">
+            <div><div class="hcsv r" id="kpi-u">0</div><div class="hcsl">عاجلة</div></div>
+            <div><div class="hcsv r" id="kpi-rp">0%</div><div class="hcsl">الرفض</div></div>
+            <div><div class="hcsv g" id="kpi-dp">0%</div><div class="hcsl">الإنجاز</div></div>
+            <div><div class="hcsv" style="color:#fff" id="kpi-active">0</div><div class="hcsl">مستخدم</div></div>
+          </div>
+          <div style="position:relative;width:78px;height:78px">
+            <canvas id="kpiHealth" width="78" height="78"></canvas>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+              <div style="font-size:18px;font-weight:800;color:#fff" id="kpi-score">0</div>
+              <div style="font-size:9px;color:rgba(255,255,255,.4)">/100</div>
+            </div>
+          </div>
+        </div>
+        <div class="dcard" style="margin-bottom:18px">
+          <div class="dcard-title"><i class="fas fa-chart-bar"></i> مقارنة الإدارات</div>
+          <div class="chart-h" style="height:220px"><canvas id="kpiCompChart"></canvas></div>
+        </div>
+        <div class="dcard">
+          <div class="dcard-title"><i class="fas fa-tasks"></i> نسب الإنجاز التفصيلية</div>
+          <div id="kpiAchBars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- TASK MODAL -->
+<div class="modal-ov" id="taskModal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <div class="modal-ttl" id="taskModalTitle">إضافة مهمة جديدة</div>
+      <button class="modal-cls" onclick="hideModal('taskModal')">×</button>
+    </div>
+    <div class="ig"><label>عنوان المهمة</label><input type="text" id="fTitle" placeholder="أدخل عنوان المهمة"></div>
+    <div class="ig"><label>الوصف</label><textarea id="fDesc" placeholder="أدخل وصف المهمة"></textarea></div>
+    <div class="ig"><label>المطلوب</label><input type="text" id="fRequired" placeholder="أدخل المطلوب"></div>
+    <div class="ig-row">
+      <div class="ig"><label>الحالة</label>
+        <select id="fStatus">
+          <option value="review">قيد المراجعة</option>
+          <option value="accepted">مقبولة</option>
+          <option value="rejected">مرفوضة</option>
+          <option value="completed">تم التسليم</option>
+        </select>
+      </div>
+      <div class="ig"><label>الأولوية</label>
+        <select id="fPriority">
+          <option value="urgent">🔴 مستعجلة</option>
+          <option value="normal" selected>🟢 عادية</option>
+          <option value="low">🔵 غير مستعجلة</option>
+          <option value="closed">⚫ مقفلة</option>
+        </select>
+      </div>
+    </div>
+    <div class="ig"><label>الإدارة</label><select id="fDept"></select></div>
+    <div class="ig-row">
+      <div class="ig"><label>تاريخ البدء</label><input type="date" id="fStart"></div>
+      <div class="ig"><label>تاريخ الانتهاء</label><input type="date" id="fEnd"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ok" id="btnSaveTask">إضافة المهمة</button>
+      <button class="btn-cc" onclick="hideModal('taskModal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW TASK MODAL -->
+<div class="modal-ov" id="viewModal">
+  <div class="modal-box" style="max-width:600px">
+    <div class="modal-hdr">
+      <div class="modal-ttl" id="vmTitle">عرض المهمة</div>
+      <button class="modal-cls" onclick="hideModal('viewModal')">×</button>
+    </div>
+    <div id="vmContent"></div>
+    <div id="adminActions" style="display:flex;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <button class="btn-ok" id="btnApprove" style="background:#16a34a;display:none" onclick="changeStatus('accepted')">✓ قبول</button>
+      <button class="btn-ok" id="btnReject" style="background:#dc2626;display:none" onclick="changeStatus('rejected')">✗ رفض</button>
+      <button class="btn-cc" onclick="hideModal('viewModal')">إغلاق</button>
+    </div>
+    <div id="userActions" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="cabt submit" id="btnSubmitTask" onclick="submitTask()"><i class="fas fa-paper-plane" style="margin-left:4px"></i> تسليم المهمة</button>
+        <button class="cabt support" id="btnRequestSupport" onclick="toggleSupport()"><i class="fas fa-hands-helping" style="margin-left:4px"></i> أحتاج دعم</button>
+      </div>
+      <button class="btn-cc" onclick="hideModal('viewModal')">إغلاق</button>
+    </div>
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-size:12.5px;font-weight:700;margin-bottom:9px">التعليقات والردود</div>
+      <div id="cmtArea"></div>
+      <div style="display:flex;gap:7px;margin-top:9px">
+        <input type="text" class="chat-inp-f" id="cmtInp" placeholder="أضف تعليقاً...">
+        <button class="send-btn" onclick="addComment()"><i class="fas fa-paper-plane"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ANN MODAL -->
+<div class="modal-ov" id="annModal">
+  <div class="modal-box">
+    <div class="modal-hdr"><div class="modal-ttl">إضافة تعميم جديد</div><button class="modal-cls" onclick="hideModal('annModal')">×</button></div>
+    <div class="ig"><label>عنوان التعميم</label><input type="text" id="fAnnTitle" placeholder="عنوان التعميم"></div>
+    <div class="ig"><label>نص التعميم</label><textarea id="fAnnBody" placeholder="نص التعميم" style="min-height:100px"></textarea></div>
+    <div class="ig"><label>النوع</label><select id="fAnnType"><option value="normal">عادي</option><option value="urgent">عاجل ⚡</option></select></div>
+    <div class="modal-foot">
+      <button class="btn-ok" onclick="saveAnn()">نشر التعميم</button>
+      <button class="btn-cc" onclick="hideModal('annModal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- KPI TASK MODAL -->
+<div class="modal-ov" id="kpiTaskModal">
+  <div class="modal-box">
+    <div class="modal-hdr"><div class="modal-ttl">إضافة مهمة مؤشر الدليل</div><button class="modal-cls" onclick="hideModal('kpiTaskModal')">×</button></div>
+    <div class="ig"><label>عنوان المهمة</label><input type="text" id="fKpiTitle"></div>
+    <div class="ig"><label>المؤشر المرتبط</label><input type="text" id="fKpiIndicator"></div>
+    <div class="ig"><label>الوصف</label><textarea id="fKpiDesc"></textarea></div>
+    <div class="ig-row">
+      <div class="ig"><label>الحالة</label><select id="fKpiStatus"><option value="review">قيد المراجعة</option><option value="accepted">مقبولة</option><option value="completed">مكتملة</option></select></div>
+      <div class="ig"><label>الأولوية</label><select id="fKpiPriority"><option value="urgent">🔴 مستعجلة</option><option value="normal" selected>🟢 عادية</option><option value="low">🔵</option></select></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ok" onclick="saveKpiTask()">إضافة</button>
+      <button class="btn-cc" onclick="hideModal('kpiTaskModal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- USER MODAL -->
+<div class="modal-ov" id="userModal">
+  <div class="modal-box">
+    <div class="modal-hdr"><div class="modal-ttl">إضافة مستخدم جديد</div><button class="modal-cls" onclick="hideModal('userModal')">×</button></div>
+    <div class="ig"><label>الاسم الكامل</label><input type="text" id="fUName"></div>
+    <div class="ig"><label>اسم المستخدم</label><input type="text" id="fUUsername" style="direction:ltr;text-align:right"></div>
+    <div class="ig"><label>كلمة المرور</label><input type="password" id="fUPass" value="123456"></div>
+    <div class="ig-row">
+      <div class="ig"><label>الإدارة</label><select id="fUDept"></select></div>
+      <div class="ig"><label>الصلاحية</label><select id="fURole"><option value="user">مستخدم</option><option value="admin">مسؤول</option></select></div>
+    </div>
+    <div class="modal-foot"><button class="btn-ok" onclick="saveUser()">إضافة</button><button class="btn-cc" onclick="hideModal('userModal')">إلغاء</button></div>
+  </div>
+</div>
+
+<!-- READERS MODAL -->
+<div class="modal-ov" id="readersModal">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-hdr"><div class="modal-ttl">من قرأ التعميم</div><button class="modal-cls" onclick="hideModal('readersModal')">×</button></div>
+    <div id="readersList"></div>
+  </div>
+</div>
+
+<!-- COMPLAINT MODAL -->
+<div class="modal-ov" id="complaintModal">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-hdr"><div class="modal-ttl">رفع بلاغ جديد</div><button class="modal-cls" onclick="hideModal('complaintModal')">×</button></div>
+    <div class="ig"><label>عنوان البلاغ</label><input type="text" id="fcTitle"></div>
+    <div class="ig"><label>تفاصيل البلاغ</label><textarea id="fcDesc" style="min-height:100px"></textarea></div>
+    <div class="ig-row">
+      <div class="ig"><label>الإدارة المعنية</label><select id="fcDept"></select></div>
+      <div class="ig"><label>نوع البلاغ</label>
+        <select id="fcType">
+          <option value="operational">⚙️ تشغيلي</option><option value="technical">💻 تقني</option>
+          <option value="service">🤝 خدمي</option><option value="safety">🚨 سلامة</option>
+          <option value="financial">💰 مالي</option><option value="other">📋 أخرى</option>
+        </select>
+      </div>
+    </div>
+    <div class="ig-row">
+      <div class="ig"><label>درجة الخطورة</label>
+        <select id="fcSeverity">
+          <option value="critical">🔴 حرج</option><option value="high">🟠 عالي</option>
+          <option value="medium" selected>🟡 متوسط</option><option value="low">🟢 منخفض</option>
+        </select>
+      </div>
+      <div class="ig"><label>الموقع</label><input type="text" id="fcLocation" placeholder="مثال: منى - الخيمة A3"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ok" onclick="saveComplaint()">رفع البلاغ</button>
+      <button class="btn-cc" onclick="hideModal('complaintModal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW COMPLAINT MODAL -->
+<div class="modal-ov" id="viewComplaintModal">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-hdr">
+      <div class="modal-ttl" id="vcTitle">تفاصيل البلاغ</div>
+      <button class="modal-cls" onclick="hideModal('viewComplaintModal')">×</button>
+    </div>
+    <div id="vcContent"></div>
+    <div id="vcAdminActions" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:12px">⚙️ تحديث البلاغ</div>
+      <div class="ig-row">
+        <div class="ig"><label>تغيير الحالة</label>
+          <select id="vcStatus">
+            <option value="open">🔴 مفتوح</option><option value="inprogress">🟡 جاري المعالجة</option>
+            <option value="resolved">🟢 محلول</option><option value="closed">⚫ مغلق</option>
+          </select>
+        </div>
+        <div class="ig"><label>تعيين إلى إدارة</label><select id="vcAssignDept"></select></div>
+      </div>
+      <div class="ig"><label>ملاحظة</label><textarea id="vcNote" style="min-height:70px"></textarea></div>
+      <button class="btn-ok" style="width:100%;margin-bottom:10px" onclick="updateComplaint()">حفظ التحديث</button>
+    </div>
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--primary)"><i class="fas fa-history" style="margin-left:6px"></i> سجل البلاغ</div>
+      <div id="vcTimeline"></div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:7px">
+      <input type="text" class="chat-inp-f" id="vcCommentInp" placeholder="أضف تعليقاً...">
+      <button class="send-btn" onclick="addComplaintComment()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// SUPABASE SETUP
+// ══════════════════════════════════════════════
+const SURL = 'https://xlmsbuztjxoadyxwexnc.supabase.co';
+const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsbXNidXp0anhvYWR5eHdleG5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MDk4MDMsImV4cCI6MjA5MDE4NTgwM30.M8caZ8QiD2xOkKfqAPaEktvitXoGUomlLZxg7DzW3oI';
+const db = window.supabase.createClient(SURL, SKEY);
+
+// ══════════════════════════════════════════════
+// STATIC DATA
+// ══════════════════════════════════════════════
+const DEPTS=[
+  {name:'إدارة المشاعر المقدسة',icon:'fa-kaaba',cls:'hl1'},
+  {name:'إدارة التسكين',icon:'fa-bed'},
+  {name:'إدارة الإعاشة',icon:'fa-utensils'},
+  {name:'إدارة النقل والمواصلات',icon:'fa-bus'},
+  {name:'إدارة العمليات والبلاغات',icon:'fa-clipboard-list'},
+  {name:'إدارة خدمة العملاء',icon:'fa-headset'},
+  {name:'الإدارة النسائية',icon:'fa-female'},
+  {name:'إدارة تجربة الحاج',icon:'fa-star'},
+  {name:'بطاقات نسك',icon:'fa-id-card'},
+  {name:'فريق متابعة مؤشرات الأداء',icon:'fa-chart-line'},
+  {name:'إدارة العلاقات العامة والإعلام',icon:'fa-broadcast-tower'},
+  {name:'الخدمات الطبية والدعم النفسي',icon:'fa-heartbeat'},
+  {name:'إدارة التخطيط الاستراتيجي',icon:'fa-chess'},
+  {name:'إدارة الابتكار والتحول الرقمي',icon:'fa-lightbulb'},
+  {name:'إدارة التوعية الثقافية',icon:'fa-book-open'},
+  {name:'إدارة العلاقات الحكومية',icon:'fa-landmark'},
+  {name:'إدارة الشراكات',icon:'fa-handshake'},
+  {name:'إدارة الاشراف',icon:'fa-eye'},
+  {name:'الإدارة المالية',icon:'fa-coins'},
+  {name:'إدارة مى',icon:'fa-tint'},
+  {name:'إدارة الاستقبال',icon:'fa-door-open'},
+  {name:'إدارة الموارد البشرية والشئون الإدارية',icon:'fa-users-cog',cls:'hl2'},
+  {name:'إدارة التدريب',icon:'fa-graduation-cap'},
+  {name:'فريق الجودة',icon:'fa-award'},
+];
+
+const SM={review:'قيد المراجعة',accepted:'مقبولة',rejected:'مرفوضة',completed:'مكتملة',pending:'مستلمة',closed:'مقفلة'};
+const PM={urgent:'مستعجلة',normal:'عادية',low:'غير مستعجلة',closed:'مقفلة'};
+const COMPLAINT_TYPES={operational:'⚙️ تشغيلي',technical:'💻 تقني',service:'🤝 خدمي',safety:'🚨 سلامة',financial:'💰 مالي',other:'📋 أخرى'};
+const COMPLAINT_STATUS={open:'🔴 مفتوح',inprogress:'🟡 جاري المعالجة',resolved:'🟢 محلول',closed:'⚫ مغلق'};
+const COMPLAINT_SEVERITY={critical:'🔴 حرج',high:'🟠 عالي',medium:'🟡 متوسط',low:'🟢 منخفض'};
+const TYPE_CLS={operational:'type-op',technical:'type-tech',service:'type-svc',safety:'type-safe',financial:'type-fin',other:'type-oth'};
+const ST_CLS={open:'st-open',inprogress:'st-inprogress',resolved:'st-resolved',closed:'st-closed'};
+const SV_CLS={critical:'sv-critical',high:'sv-high',medium:'sv-medium',low:'sv-low'};
+
+// ══════════════════════════════════════════════
+// LOCAL CACHE
+// ══════════════════════════════════════════════
+let tasks=[], users=[], announcements=[], complaints=[], kpiTasks=[];
+let chatMsgs=[{sender:'النظام',txt:'مرحباً بكم في منصة إتمام',time:'الآن',me:false}];
+let notifs=[];
+let currentUser=null, currentDept=null, currentTaskId=null;
+let currentFilter='all', currentMyFilter='all', currentComplaintFilter='all';
+let currentComplaintId=null;
+let chartInstances={};
+
+// ══════════════════════════════════════════════
+// MAPPERS
+// ══════════════════════════════════════════════
+function mapTask(r){
+  return {
+    id:r.id, title:r.title||'', desc:r.description||'', required:r.required_action||'',
+    dept:r.department||'', priority:r.priority||'normal', status:r.status||'review',
+    scheduleType:r.schedule_type||'immediate', scheduleDate:r.schedule_date||null,
+    scheduleTime:r.schedule_time||null, repeat:r.repeat_type||null,
+    start:r.start_date||'', end:r.end_date||'', file:r.file_name||'',
+    needSupport:r.need_support||false, submitCount:r.submit_count||0,
+    submitTime:r.submit_time||null, approveTime:r.approve_time||null,
+    rejectTime:r.reject_time||null, isNew:r.is_new||false,
+    published:r.published!==false,
+    comments:Array.isArray(r.comments)?r.comments:[]
+  };
+}
+function taskToDb(t){
+  return {
+    id:t.id, title:t.title, description:t.desc||'', required_action:t.required||'',
+    department:t.dept||'', priority:t.priority||'normal', status:t.status||'review',
+    schedule_type:t.scheduleType||'immediate', schedule_date:t.scheduleDate||null,
+    schedule_time:t.scheduleTime||null, repeat_type:t.repeat||null,
+    start_date:t.start||null, end_date:t.end||null, file_name:t.file||null,
+    need_support:t.needSupport||false, submit_count:t.submitCount||0,
+    submit_time:t.submitTime||null, approve_time:t.approveTime||null,
+    reject_time:t.rejectTime||null, is_new:t.isNew||false,
+    published:t.published!==false, comments:t.comments||[]
+  };
+}
+function mapUser(r){
+  return {id:r.id,name:r.full_name||'',username:r.username||'',pass:r.user_password||'',dept:r.department||'',role:r.role||'user',color:r.color||'#3b82f6'};
+}
+function mapAnn(r){
+  return {id:r.id,title:r.title||'',body:r.body||'',date:r.created_at?(r.created_at.split('T')[0]):'',author:r.author||'',type:r.type||'normal',readers:Array.isArray(r.readers)?r.readers:[]};
+}
+function mapComplaint(r){
+  return {
+    id:r.id, title:r.title||'', desc:r.description||'', dept:r.department||'',
+    type:r.type||'operational', severity:r.severity||'medium', status:r.status||'open',
+    location:r.location||'', reporter:r.reporter||'', reporterDept:r.reporter_department||'',
+    reportTime:r.created_at?(r.created_at.replace('T',' ').substring(0,16)):'',
+    assignedTo:r.assigned_to||null, file:'', resolvedTime:r.resolved_time||null,
+    timeline:Array.isArray(r.timeline)?r.timeline:[]
+  };
+}
+
+// ══════════════════════════════════════════════
+// LOADING
+// ══════════════════════════════════════════════
+function showLoading(){document.getElementById('loadingOverlay').classList.remove('hide');}
+function hideLoading(){document.getElementById('loadingOverlay').classList.add('hide');}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+window.onload=function(){
+  document.getElementById('loginHint').innerHTML='<b>مسؤول:</b> admin / 123456<br><b>مثال إدارة:</b> mashaer / 123456';
+  document.getElementById('btnEnter').onclick=()=>showModal('loginOverlay');
+  document.getElementById('btnLogin').onclick=login;
+  document.getElementById('inpPass').onkeypress=e=>{if(e.key==='Enter')login();};
+  document.getElementById('sbFoot').onclick=logout;
+  document.getElementById('btnNotif').onclick=toggleNotif;
+  document.getElementById('btnBack').onclick=()=>navigate('departments');
+  document.getElementById('cmtInp').onkeypress=e=>{if(e.key==='Enter')addComment();};
+  document.getElementById('btnSaveTask').onclick=saveTask;
+  document.getElementById('btnSend').onclick=sendMsg;
+  document.getElementById('chatInp').onkeypress=e=>{if(e.key==='Enter')sendMsg();};
+  document.getElementById('deptSearch').oninput=e=>renderDepts(e.target.value);
+  document.getElementById('deptSrch').oninput=e=>renderDeptCards(currentFilter,e.target.value);
+  document.getElementById('myTaskSrch').oninput=e=>renderMyTasks(currentMyFilter,e.target.value);
+
+  // Dept filter tabs
+  document.getElementById('pg-dept-tasks').querySelectorAll('.ftab[data-f]').forEach(btn=>{
+    btn.onclick=()=>{
+      document.getElementById('pg-dept-tasks').querySelectorAll('.ftab[data-f]').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on'); currentFilter=btn.dataset.f; renderDeptCards(currentFilter);
+    };
+  });
+  document.getElementById('pg-tasks').querySelectorAll('.ftab[data-af]').forEach(btn=>{
+    btn.onclick=()=>{
+      document.getElementById('pg-tasks').querySelectorAll('.ftab[data-af]').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on'); renderAllCards(btn.dataset.af);
+    };
+  });
+  document.getElementById('pg-my-tasks').querySelectorAll('.ftab[data-mf]').forEach(btn=>{
+    btn.onclick=()=>{
+      document.getElementById('pg-my-tasks').querySelectorAll('.ftab[data-mf]').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on'); currentMyFilter=btn.dataset.mf; renderMyTasks(currentMyFilter);
+    };
+  });
+  document.querySelectorAll('.modal-ov').forEach(o=>o.onclick=function(e){if(e.target===this)hideModal(this.id);});
+  document.addEventListener('click',e=>{
+    const p=document.getElementById('notifPanel');
+    if(p.classList.contains('show')&&!p.contains(e.target)&&!document.getElementById('btnNotif').contains(e.target))
+      p.classList.remove('show');
+  });
+};
+
+// ══════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════
+async function login(){
+  const username=document.getElementById('inpUser').value.trim();
+  const pass=document.getElementById('inpPass').value;
+  if(!username){toast('أدخل اسم المستخدم','err');return;}
+  showLoading();
+  try{
+    const {data,error}=await db.from('users').select('*').eq('username',username).eq('user_password',pass).single();
+    if(error||!data){hideLoading();toast('اسم المستخدم أو كلمة المرور غير صحيحة','err');return;}
+    currentUser=mapUser(data);
+    await loadAllData();
+    hideModal('loginOverlay');
+    document.getElementById('landingPage').style.display='none';
+    document.getElementById('appLayout').classList.add('show');
+    document.getElementById('sbAv').textContent=currentUser.name[0];
+    document.getElementById('sbName').textContent=currentUser.name.split(' ').slice(0,2).join(' ');
+    document.getElementById('sbRole').textContent=currentUser.role==='admin'?'مسؤول النظام':'مستخدم - '+currentUser.dept;
+    buildSidebar(); fillSelects();
+    setTimeout(()=>{initCharts();navigate(currentUser.role==='admin'?'dashboard':'my-tasks');},100);
+    toast('مرحباً '+currentUser.name.split(' ')[0]+'! 👋');
+    addNotif('door-open','b','مرحباً بك في منصة إتمام');
+  } catch(e){
+    hideLoading();toast('خطأ في الاتصال بقاعدة البيانات','err');console.error(e);
+  }
+  hideLoading();
+}
+
+async function loadAllData(){
+  const [tRes,uRes,aRes,cRes]=await Promise.all([
+    db.from('tasks').select('*').order('created_at',{ascending:false}),
+    db.from('users').select('*').order('id',{ascending:true}),
+    db.from('announcements').select('*').order('created_at',{ascending:false}),
+    db.from('complaints').select('*').order('created_at',{ascending:false}),
+  ]);
+  if(tRes.data) tasks=tRes.data.map(mapTask);
+  if(uRes.data) users=uRes.data.map(mapUser);
+  if(aRes.data) announcements=aRes.data.map(mapAnn);
+  if(cRes.data) complaints=cRes.data.map(mapComplaint);
+}
+
+function logout(){
+  currentUser=null;tasks=[];users=[];announcements=[];complaints=[];
+  document.getElementById('landingPage').style.display='flex';
+  document.getElementById('appLayout').classList.remove('show');
+}
+
+// ══════════════════════════════════════════════
+// SIDEBAR
+// ══════════════════════════════════════════════
+function buildSidebar(){
+  const isAdmin=currentUser.role==='admin';
+  let html='';
+  if(isAdmin){
+    html+=`<div class="sb-sec">الرئيسية</div>
+    <div class="sb-item on" data-pg="dashboard"><i class="fas fa-th-large"></i> لوحة التحكم</div>
+    <div class="sb-sec">إدارة المهام</div>
+    <div class="sb-item" data-pg="departments"><i class="fas fa-sitemap"></i> الإدارات</div>
+    <div class="sb-item" data-pg="tasks"><i class="fas fa-tasks"></i> كل المهام</div>
+    <div class="sb-item" data-pg="kpi-tasks"><i class="fas fa-chart-line"></i> مهام مؤشرات الدليل</div>
+    <div class="sb-sec">التواصل</div>
+    <div class="sb-item" data-pg="announcements"><i class="fas fa-bullhorn"></i> التعاميم <span class="sb-badge" id="sbAnnBadge" style="display:none">0</span></div>
+    <div class="sb-item" data-pg="complaints"><i class="fas fa-flag"></i> البلاغات <span class="sb-badge" id="sbComplaintBadge" style="display:none">0</span></div>
+    <div class="sb-item" data-pg="chat"><i class="fas fa-comments"></i> الدردشة</div>
+    <div class="sb-sec">الإدارة</div>
+    <div class="sb-item" data-pg="users"><i class="fas fa-users"></i> المستخدمون</div>
+    <div class="sb-item" data-pg="kpi"><i class="fas fa-chart-bar"></i> مؤشرات الأداء</div>`;
+    document.getElementById('headerNewBtn').style.display='flex';
+    document.getElementById('headerNewBtn').onclick=openTaskModal;
+    document.getElementById('btnNewAnn').style.display='flex';
+    document.getElementById('btnNewAnn').onclick=()=>showModal('annModal');
+    document.getElementById('btnNewDept').style.display='flex';
+    setTimeout(()=>{const bc=document.getElementById('btnNewComplaint');if(bc)bc.onclick=()=>{fillComplaintDeptSelect();showModal('complaintModal');};},100);
+  } else {
+    html+=`<div class="sb-sec">الرئيسية</div>
+    <div class="sb-item on" data-pg="my-tasks"><i class="fas fa-tasks"></i> مهامي <span class="sb-badge" id="sbMyBadge" style="display:none">0</span></div>
+    <div class="sb-sec">الأداء</div>
+    <div class="sb-item" data-pg="my-kpi"><i class="fas fa-chart-bar"></i> مؤشرات إدارتي</div>
+    <div class="sb-sec">التواصل</div>
+    <div class="sb-item" data-pg="announcements"><i class="fas fa-bullhorn"></i> التعاميم <span class="sb-badge" id="sbAnnBadge" style="display:none">0</span></div>
+    <div class="sb-item" data-pg="complaints"><i class="fas fa-flag"></i> البلاغات</div>
+    <div class="sb-item" data-pg="chat"><i class="fas fa-comments"></i> الدردشة</div>`;
+    document.getElementById('headerNewBtn').style.display='none';
+    document.getElementById('btnNewAnn').style.display='none';
+    setTimeout(()=>{const bc=document.getElementById('btnNewComplaint');if(bc)bc.onclick=()=>{fillComplaintDeptSelect();showModal('complaintModal');};},100);
+  }
+  document.getElementById('sbNav').innerHTML=html;
+  document.querySelectorAll('.sb-item[data-pg]').forEach(n=>n.onclick=()=>navigate(n.dataset.pg));
+  updateSideBadges();
+}
+
+// ══════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════
+const TITLES={dashboard:'لوحة التحكم',departments:'الإدارات','dept-tasks':'مهام الإدارة',tasks:'كل المهام','kpi-tasks':'مهام مؤشرات الدليل','my-tasks':'مهامي','my-kpi':'مؤشرات إدارتي',announcements:'التعاميم',complaints:'نظام البلاغات',chat:'الدردشة',users:'إدارة المستخدمين',kpi:'مؤشرات الأداء'};
+
+function navigate(pg){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  const el=document.getElementById('pg-'+pg);if(el)el.classList.add('on');
+  document.getElementById('topTitle').textContent=TITLES[pg]||pg;
+  document.querySelectorAll('.sb-item').forEach(n=>n.classList.remove('on'));
+  const t=pg==='dept-tasks'?'departments':pg;
+  const nav=document.querySelector('.sb-item[data-pg="'+t+'"]');
+  if(nav)nav.classList.add('on');
+  if(pg==='dept-tasks') renderDeptCards('all');
+  if(pg==='tasks') renderAllCards('all');
+  if(pg==='my-tasks') renderMyTasks('all');
+  if(pg==='my-kpi') renderMyKpi();
+  if(pg==='dashboard'||pg==='kpi') setTimeout(()=>{renderDashCharts();updateAchBars();updateAnnStats();},80);
+  if(pg==='announcements') renderAnn();
+  if(pg==='chat') renderChat();
+  if(pg==='kpi-tasks') renderKpiTasks();
+  if(pg==='complaints'){fillComplaintDeptSelect();renderComplaints();}
+}
+
+function fillSelects(){
+  const opts=DEPTS.map(d=>'<option>'+d.name+'</option>').join('');
+  ['fDept','fUDept'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
+}
+function fillComplaintDeptSelect(){
+  const opts=DEPTS.map(d=>'<option>'+d.name+'</option>').join('');
+  ['fcDept','vcAssignDept'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
+}
+
+// ══════════════════════════════════════════════
+// TASKS
+// ══════════════════════════════════════════════
+function renderDepts(filter){
+  filter=filter||'';
+  const list=filter?DEPTS.filter(d=>d.name.includes(filter)):DEPTS;
+  document.getElementById('deptGrid').innerHTML=list.map(d=>{
+    const cnt=tasks.filter(t=>t.dept===d.name).length;
+    const newCnt=tasks.filter(t=>t.dept===d.name&&t.isNew).length;
+    const supCnt=tasks.filter(t=>t.dept===d.name&&t.needSupport).length;
+    return '<div class="dept-card '+(d.cls||'')+'" onclick="openDept(\''+d.name.replace(/'/g,"\\'")+'\')">' +
+      '<div class="dept-left"><div class="dept-ico"><i class="fas '+d.icon+'"></i></div><span>'+d.name+'</span></div>' +
+      '<div style="display:flex;align-items:center;gap:6px">' +
+        (newCnt?'<span style="background:#fef2f2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;animation:pulse 1.5s infinite">'+newCnt+' جديدة</span>':'')+
+        (supCnt?'<span style="background:#fef3c7;color:#d97706;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">🆘 '+supCnt+'</span>':'')+
+        (cnt?'<span class="dept-cnt">'+cnt+'</span>':'')+
+        '<i class="fas fa-chevron-left dept-arr"></i>'+
+      '</div></div>';
+  }).join('');
+}
+
+function openDept(name){
+  currentDept=name;
+  document.getElementById('dtTitle').textContent=name;
+  document.getElementById('dtSub').textContent='إدارة ومتابعة مهام '+name;
+  currentFilter='all';
+  document.getElementById('pg-dept-tasks').querySelectorAll('.ftab[data-f]').forEach(b=>b.classList.remove('on'));
+  const ab=document.querySelector('#pg-dept-tasks .ftab[data-f="all"]');if(ab)ab.classList.add('on');
+  navigate('dept-tasks');
+}
+
+function renderDeptCards(filter,search){
+  filter=filter||'all';search=(search||'').trim();
+  let dt=tasks.filter(t=>t.dept===currentDept);
+  if(filter==='support') dt=dt.filter(t=>t.needSupport);
+  else if(filter!=='all') dt=dt.filter(t=>t.status===filter);
+  if(search) dt=dt.filter(t=>t.title.includes(search)||t.desc.includes(search));
+  const all=tasks.filter(t=>t.dept===currentDept);
+  document.getElementById('miniStats').innerHTML=
+    ms('fa-bullseye','ic-p',all.length,'إجمالي')+
+    ms('fa-check-circle','ic-g',all.filter(t=>['completed','accepted'].includes(t.status)).length,'منجزة')+
+    ms('fa-times-circle','ic-r',all.filter(t=>t.status==='rejected').length,'مرفوضة')+
+    ms('fa-hands-helping','',all.filter(t=>t.needSupport).length,'دعم','background:#fffbeb;color:#d97706');
+  document.getElementById('deptCardsGrid').innerHTML=dt.length?dt.map(t=>taskCard(t,false,false)).join(''):
+    '<div class="empty-state"><i class="fas fa-inbox"></i><p>لا توجد مهام</p></div>';
+}
+
+function renderMyTasks(filter,search){
+  filter=filter||'all';search=(search||'').trim();
+  const dept=currentUser.dept;
+  let dt=tasks.filter(t=>t.dept===dept&&t.published);
+  if(filter==='support') dt=dt.filter(t=>t.needSupport);
+  else if(filter!=='all') dt=dt.filter(t=>t.status===filter);
+  if(search) dt=dt.filter(t=>t.title.includes(search)||t.desc.includes(search));
+  document.getElementById('myTasksTitle').textContent='مهام '+dept;
+  document.getElementById('myTasksSub').textContent='المهام المسندة لإدارتك ('+dept+')';
+  const all=tasks.filter(t=>t.dept===dept);
+  document.getElementById('myMiniStats').innerHTML=
+    ms('fa-bullseye','ic-p',all.length,'إجمالي')+
+    ms('fa-check-circle','ic-g',all.filter(t=>['completed','accepted'].includes(t.status)).length,'منجزة')+
+    ms('fa-times-circle','ic-r',all.filter(t=>t.status==='rejected').length,'مرفوضة')+
+    ms('fa-hands-helping','',all.filter(t=>t.needSupport).length,'دعم','background:#fffbeb;color:#d97706');
+  document.getElementById('myTasksGrid').innerHTML=dt.length?dt.map(t=>taskCard(t,false,true)).join(''):
+    '<div class="empty-state"><i class="fas fa-inbox"></i><p>لا توجد مهام</p></div>';
+}
+
+function renderAllCards(filter){
+  filter=filter||'all';
+  let dt=filter==='support'?tasks.filter(t=>t.needSupport):filter==='all'?tasks:tasks.filter(t=>t.status===filter);
+  document.getElementById('allCardsGrid').innerHTML=dt.length?dt.map(t=>taskCard(t,true,false)).join(''):
+    '<div class="empty-state"><i class="fas fa-inbox"></i><p>لا توجد مهام</p></div>';
+}
+
+function ms(icon,cls,val,lbl,style){
+  return '<div class="mstat"><div class="mstat-ico '+(cls||'')+'" style="'+(style||'')+'"><i class="fas '+icon+'"></i></div><div><div style="font-size:19px;font-weight:800">'+val+'</div><div style="font-size:10.5px;color:var(--muted)">'+lbl+'</div></div></div>';
+}
+
+function taskCard(t,showDept,isUser){
+  const isAdmin=currentUser?.role==='admin';
+  const prioCls='prio-'+(t.priority||'normal');
+  const prioLabel={urgent:'مستعجلة',normal:'عادية',low:'غير مستعجلة',closed:'مقفلة'}[t.priority]||'عادية';
+  const sStyle={review:'background:#fef9c3;color:#ca8a04',accepted:'background:#dcfce7;color:#16a34a',rejected:'background:#fee2e2;color:#dc2626',completed:'background:#d1fae5;color:#065f46',pending:'background:#ede9fe;color:#7c3aed',closed:'background:#f1f5f9;color:#64748b'}[t.status]||'background:#f1f5f9;color:#64748b';
+  return '<div class="task-card '+prioCls+'" id="card-'+t.id+'">' +
+    '<div class="card-new-dot'+(t.isNew?' show':'')+'" id="newdot-'+t.id+'"></div>' +
+    (t.needSupport?'<div style="position:absolute;top:8px;left:'+(t.isNew?'22':'8')+'px;background:#fef3c7;color:#d97706;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;display:inline-flex;align-items:center;gap:3px"><i class="fas fa-hands-helping"></i> يحتاج دعم</div>':'')+
+    '<div class="card-prio-tag">'+prioLabel+'</div>' +
+    '<div style="font-size:16px;font-weight:800;color:var(--txt);line-height:1.3;margin-top:18px">'+t.title+'</div>' +
+    '<div style="font-size:11.5px;color:var(--muted)">'+t.id+'</div>' +
+    '<div><span style="display:inline-flex;padding:4px 13px;border-radius:20px;font-size:12px;font-weight:600;'+sStyle+'">'+SM[t.status]+'</span></div>' +
+    (showDept?'<div style="font-size:12px;color:var(--muted)"><i class="fas fa-building" style="margin-left:4px;font-size:10px"></i>'+t.dept+'</div>':'')+
+    (t.desc?'<div style="font-size:12.5px;color:#e11d48;font-weight:500;line-height:1.5">'+t.desc+'</div>':'')+
+    (t.required?'<div style="font-size:12px;color:var(--muted)"><b>المطلوب:</b> '+t.required+'</div>':'')+
+    ((t.start||t.end)?'<div style="font-size:11px;color:#94a3b8;line-height:1.9">'+(t.start?'البدء: '+fmtDate(t.start)+'<br>':'')+(t.end?'الانتهاء: '+fmtDate(t.end):'')+'</div>':'')+
+    (t.submitTime?'<div style="font-size:11px;background:#f0fdf4;color:#16a34a;padding:4px 8px;border-radius:6px"><i class="fas fa-check-circle" style="margin-left:4px"></i>تم التسليم: '+t.submitTime+'</div>':'')+
+    (t.approveTime?'<div style="font-size:11px;background:#f0fdf4;color:#065f46;padding:4px 8px;border-radius:6px"><i class="fas fa-thumbs-up" style="margin-left:4px"></i>تم القبول: '+t.approveTime+'</div>':'')+
+    (t.rejectTime?'<div style="font-size:11px;background:#fef2f2;color:#dc2626;padding:4px 8px;border-radius:6px"><i class="fas fa-thumbs-down" style="margin-left:4px"></i>تم الرفض: '+t.rejectTime+'</div>':'')+
+    '<div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">' +
+      (isAdmin?'<button class="cabt del" onclick="event.stopPropagation();deleteTask(\''+t.id+'\')">حذف</button>':'')+
+      (isAdmin?'<button class="cabt" onclick="event.stopPropagation();editTask(\''+t.id+'\')">تعديل</button>':'')+
+      '<button class="cabt" onclick="viewTask(\''+t.id+'\')">عرض</button>'+
+      (!isAdmin?'<button class="cabt support'+(t.needSupport?' active':'')+'" onclick="event.stopPropagation();toggleSupportCard(\''+t.id+'\')">'+(t.needSupport?'إلغاء الدعم':'🆘 أحتاج دعم')+'</button>':'')+
+    '</div>' +
+  '</div>';
+}
+
+function openTaskModal(id){
+  currentTaskId=id||null;
+  document.getElementById('taskModalTitle').textContent=id?'تعديل المهمة':'إضافة مهمة جديدة';
+  document.getElementById('btnSaveTask').textContent=id?'حفظ التعديل':'إضافة المهمة';
+  if(id){
+    const t=tasks.find(t=>t.id===id);
+    document.getElementById('fTitle').value=t.title;
+    document.getElementById('fDesc').value=t.desc;
+    document.getElementById('fRequired').value=t.required;
+    document.getElementById('fStatus').value=t.status;
+    document.getElementById('fPriority').value=t.priority;
+    document.getElementById('fDept').value=t.dept;
+    document.getElementById('fStart').value=t.start||'';
+    document.getElementById('fEnd').value=t.end||'';
+  } else {
+    ['fTitle','fDesc','fRequired','fStart','fEnd'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('fStatus').value='review';
+    document.getElementById('fPriority').value='normal';
+    if(currentDept) document.getElementById('fDept').value=currentDept;
+  }
+  showModal('taskModal');
+}
+function editTask(id){openTaskModal(id);}
+
+async function saveTask(){
+  const title=document.getElementById('fTitle').value.trim();
+  if(!title){toast('الرجاء إدخال عنوان المهمة','err');return;}
+  showLoading();
+  try{
+    if(currentTaskId){
+      const t=tasks.find(t=>t.id===currentTaskId);
+      const os=t.status;
+      Object.assign(t,{
+        title, desc:document.getElementById('fDesc').value,
+        required:document.getElementById('fRequired').value,
+        status:document.getElementById('fStatus').value,
+        priority:document.getElementById('fPriority').value,
+        dept:document.getElementById('fDept').value,
+        scheduleType:'immediate', start:document.getElementById('fStart').value,
+        end:document.getElementById('fEnd').value
+      });
+      const {error}=await db.from('tasks').update(taskToDb(t)).eq('id',currentTaskId);
+      if(error){toast('خطأ في التحديث','err');console.error(error);}
+      else{
+        if(os!==t.status) addNotif('edit','y','تم تغيير حالة "'+title+'" إلى: '+SM[t.status]);
+        toast('تم التحديث');
+      }
+    } else {
+      const nid='HM-'+(Date.now());
+      const dept=document.getElementById('fDept').value;
+      const newTask={
+        id:nid, title, desc:document.getElementById('fDesc').value,
+        required:document.getElementById('fRequired').value,
+        status:document.getElementById('fStatus').value,
+        priority:document.getElementById('fPriority').value,
+        dept, scheduleType:'immediate', published:true,
+        start:document.getElementById('fStart').value,
+        end:document.getElementById('fEnd').value,
+        file:'', comments:[], isNew:true, needSupport:false,
+        submitCount:0, submitTime:null, approveTime:null, rejectTime:null
+      };
+      const {error}=await db.from('tasks').insert(taskToDb(newTask));
+      if(error){toast('خطأ في الإضافة','err');console.error(error);}
+      else{
+        tasks.unshift(newTask);
+        addNotif('plus-circle','g','📋 مهمة جديدة: "'+title+'" → '+dept);
+        toast('تمت إضافة المهمة');
+      }
+    }
+    hideModal('taskModal'); refresh();
+  } catch(e){toast('خطأ في الاتصال','err');console.error(e);}
+  hideLoading();
+}
+
+async function deleteTask(id){
+  if(!confirm('حذف هذه المهمة؟'))return;
+  showLoading();
+  const {error}=await db.from('tasks').delete().eq('id',id);
+  if(!error){tasks=tasks.filter(t=>t.id!==id);refresh();toast('تم الحذف');}
+  else{toast('خطأ في الحذف','err');console.error(error);}
+  hideLoading();
+}
+
+async function changeStatus(status){
+  const t=tasks.find(t=>t.id===currentTaskId);
+  const ts=nowStamp();
+  t.status=status;
+  if(status==='accepted') t.approveTime=ts;
+  if(status==='rejected') t.rejectTime=ts;
+  const msg=status==='accepted'?'✅ تم قبول المهمة | وقت القبول: '+ts:'❌ تم رفض المهمة | وقت الرفض: '+ts;
+  t.comments.push({author:currentUser.name,txt:msg,time:ts,type:'decision'});
+  showLoading();
+  const {error}=await db.from('tasks').update(taskToDb(t)).eq('id',currentTaskId);
+  hideLoading();
+  if(!error){
+    hideModal('viewModal');
+    addNotif('check-circle',status==='accepted'?'g':'r',(status==='accepted'?'✅ قبول':'❌ رفض')+' "'+t.title+'"');
+    refresh(); toast('تم: '+SM[status]);
+  } else {toast('خطأ','err');console.error(error);}
+}
+
+async function submitTask(){
+  const t=tasks.find(t=>t.id===currentTaskId);
+  if(t.submitCount>=2){toast('انتهت محاولات التسليم (2/2)','err');return;}
+  t.submitCount=(t.submitCount||0)+1;
+  t.submitTime=nowStamp();
+  t.status='completed';
+  t.comments.push({author:currentUser.name,txt:'✅ تم تسليم المهمة | وقت التسليم: '+t.submitTime,time:t.submitTime,type:'submit'});
+  showLoading();
+  const {error}=await db.from('tasks').update(taskToDb(t)).eq('id',currentTaskId);
+  hideLoading();
+  if(!error){hideModal('viewModal');addNotif('check-circle','g','✅ تسليم: "'+t.title+'"');toast('تم التسليم ✅');refresh();}
+  else{toast('خطأ','err');console.error(error);}
+}
+
+async function toggleSupport(){
+  const t=tasks.find(t=>t.id===currentTaskId);
+  t.needSupport=!t.needSupport;
+  const btn=document.getElementById('btnRequestSupport');
+  if(btn){btn.textContent=t.needSupport?'إلغاء طلب الدعم':'🆘 أحتاج دعم';btn.className='cabt support'+(t.needSupport?' active':'');}
+  if(t.needSupport) t.comments.push({author:currentUser.name,txt:'🆘 أحتاج دعم لإتمام هذه المهمة',time:nowStamp()});
+  showLoading();
+  await db.from('tasks').update({need_support:t.needSupport,comments:t.comments}).eq('id',currentTaskId);
+  hideLoading();
+  if(t.needSupport){addNotif('hands-helping','y','🆘 طلب دعم على "'+t.title+'"');toast('تم إرسال طلب الدعم','warn');}
+  else toast('تم إلغاء طلب الدعم');
+  refresh();
+}
+
+async function toggleSupportCard(id){
+  const t=tasks.find(t=>t.id===id);
+  t.needSupport=!t.needSupport;
+  if(t.needSupport) t.comments.push({author:currentUser.name,txt:'🆘 أحتاج دعم',time:nowStamp()});
+  await db.from('tasks').update({need_support:t.needSupport,comments:t.comments}).eq('id',id);
+  if(t.needSupport){addNotif('hands-helping','y','🆘 طلب دعم على "'+t.title+'"');toast('تم إرسال طلب الدعم','warn');}
+  else toast('تم إلغاء طلب الدعم');
+  refresh();
+}
+
+async function addComment(){
+  const inp=document.getElementById('cmtInp');
+  if(!inp.value.trim())return;
+  const t=tasks.find(t=>t.id===currentTaskId);
+  t.comments.push({author:currentUser.name,txt:inp.value,time:nowStamp()});
+  inp.value='';
+  await db.from('tasks').update({comments:t.comments}).eq('id',currentTaskId);
+  renderComments(t);
+  addNotif('comment','p','💬 تعليق جديد على "'+t.title+'"');
+  toast('تم إضافة التعليق');
+}
+
+function viewTask(id){
+  const t=tasks.find(t=>t.id===id);if(!t)return;
+  currentTaskId=id;
+  if(t.isNew){t.isNew=false;db.from('tasks').update({is_new:false}).eq('id',id);const d=document.getElementById('newdot-'+id);if(d)d.classList.remove('show');updateSideBadges();}
+  document.getElementById('vmTitle').textContent=t.title;
+  document.getElementById('vmContent').innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:13px">'+
+    '<div><div class="view-label">رقم المهمة</div><div class="view-val">'+t.id+'</div></div>'+
+    '<div><div class="view-label">الإدارة</div><div class="view-val">'+t.dept+'</div></div>'+
+    '<div><div class="view-label">الأولوية</div><div style="margin-top:2px"><span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#f1f5f9;color:#334155">'+PM[t.priority]+'</span></div></div>'+
+    '<div><div class="view-label">الحالة</div><div style="margin-top:2px"><span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#f0fdf4;color:#16a34a">'+SM[t.status]+'</span></div></div>'+
+    '<div><div class="view-label">تاريخ البدء</div><div class="view-val">'+(t.start?fmtDate(t.start):'—')+'</div></div>'+
+    '<div><div class="view-label">تاريخ الانتهاء</div><div class="view-val">'+(t.end?fmtDate(t.end):'—')+'</div></div>'+
+    (t.submitTime?'<div style="grid-column:1/-1"><div class="view-label">⏱ وقت التسليم</div><div class="view-val" style="color:#16a34a;font-weight:700">'+t.submitTime+' <span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:2px 7px;border-radius:20px">('+t.submitCount+'/2)</span></div></div>':'')+
+    (t.approveTime?'<div style="grid-column:1/-1"><div class="view-label">✅ وقت القبول</div><div class="view-val" style="color:#16a34a;font-weight:700">'+t.approveTime+'</div></div>':'')+
+    (t.rejectTime?'<div style="grid-column:1/-1"><div class="view-label">❌ وقت الرفض</div><div class="view-val" style="color:#dc2626;font-weight:700">'+t.rejectTime+'</div></div>':'')+
+    '</div>'+
+    '<div style="margin-bottom:10px"><div class="view-label">الوصف</div><div class="view-val" style="line-height:1.7">'+t.desc+'</div></div>'+
+    (t.required?'<div><div class="view-label">المطلوب</div><div class="view-val" style="line-height:1.7">'+t.required+'</div></div>':'');
+  renderComments(t);
+  const isAdmin=currentUser?.role==='admin';
+  document.getElementById('adminActions').style.display=isAdmin?'flex':'none';
+  document.getElementById('btnApprove').style.display=isAdmin?'block':'none';
+  document.getElementById('btnReject').style.display=isAdmin?'block':'none';
+  document.getElementById('userActions').style.display=!isAdmin?'block':'none';
+  if(!isAdmin){
+    const sb=document.getElementById('btnRequestSupport');
+    if(sb){sb.textContent=t.needSupport?'إلغاء طلب الدعم':'🆘 أحتاج دعم';sb.className='cabt support'+(t.needSupport?' active':'');}
+    const submitBtn=document.getElementById('btnSubmitTask');
+    if(submitBtn){
+      const rem=2-(t.submitCount||0);
+      if(rem<=0){submitBtn.disabled=true;submitBtn.style.opacity='.4';submitBtn.innerHTML='<i class="fas fa-lock" style="margin-left:4px"></i> انتهت المحاولات';}
+      else{submitBtn.disabled=false;submitBtn.style.opacity='1';submitBtn.innerHTML='<i class="fas fa-paper-plane" style="margin-left:4px"></i> تسليم ('+rem+' متبقية)';}
+    }
+  }
+  showModal('viewModal');
+}
+
+function renderComments(t){
+  const area=document.getElementById('cmtArea');
+  if(!t.comments||!t.comments.length){area.innerHTML='<div style="font-size:12px;color:var(--muted);padding:6px 0">لا توجد تعليقات</div>';return;}
+  area.innerHTML=t.comments.map(c=>{
+    const isSubmit=c.type==='submit';
+    const isDecision=c.type==='decision';
+    const bg=isSubmit||isDecision?'#f0fdf4':'transparent';
+    return '<div class="cmt-item" style="background:'+bg+';border-radius:8px;padding:8px;margin-bottom:4px">'+
+      '<div class="cmt-av">'+c.author[0]+'</div>'+
+      '<div style="flex:1"><div style="font-size:10.5px;color:var(--muted);margin-bottom:3px"><b>'+c.author+'</b> • '+c.time+'</div>'+
+      '<div style="font-size:12.5px;'+(isSubmit||isDecision?'font-weight:600':'')+'">'+c.txt+'</div></div></div>';
+  }).join('');
+}
+
+function refresh(){
+  renderDepts();
+  if(currentDept) renderDeptCards(currentFilter||'all');
+  renderAllCards('all');
+  if(currentUser?.role!=='admin') renderMyTasks(currentMyFilter||'all');
+  updateStats(); updateSideBadges();
+}
+
+// ══════════════════════════════════════════════
+// ANNOUNCEMENTS
+// ══════════════════════════════════════════════
+function renderAnn(){
+  const list=document.getElementById('annList');if(!list)return;
+  if(!announcements.length){list.innerHTML='<div class="empty-state"><i class="fas fa-bullhorn"></i><p>لا توجد تعاميم</p></div>';return;}
+  const isAdmin=currentUser?.role==='admin';
+  list.innerHTML=announcements.map(a=>{
+    const read=currentUser&&a.readers.includes(currentUser.name);
+    return '<div class="ann-card">'+
+      '<div class="ann-ico"><i class="fas fa-bullhorn"></i></div>'+
+      '<div style="flex:1">'+
+        (a.type==='urgent'?'<div class="ann-urgent-tag"><i class="fas fa-bolt"></i> عاجل</div>':'')+
+        '<div style="font-size:14px;font-weight:800;margin-bottom:5px">'+a.title+'</div>'+
+        '<div style="font-size:12.5px;color:var(--muted);line-height:1.7">'+a.body+'</div>'+
+        '<div style="display:flex;align-items:center;gap:9px;margin-top:9px;font-size:10.5px;color:var(--muted)">'+
+          '<i class="fas fa-user"></i> '+a.author+' <i class="fas fa-calendar-alt"></i> '+a.date+
+          ' <span><i class="fas fa-eye"></i> '+a.readers.length+' قرأها</span></div>'+
+        (!isAdmin?'<div onclick="markAnnRead('+a.id+')" class="ann-read-btn'+(read?' done':'')+'">'+
+          (read?'<i class="fas fa-check-double"></i> تمت القراءة':'<i class="fas fa-check"></i> تم القراءة')+'</div>':
+          '<div style="margin-top:8px"><button class="cabt" onclick="showReaders('+a.id+')"><i class="fas fa-users" style="margin-left:4px"></i> من قرأ ('+a.readers.length+')</button></div>')+
+      '</div>'+
+      (isAdmin?'<button class="cabt del" style="font-size:11px;align-self:flex-start" onclick="deleteAnn('+a.id+')"><i class="fas fa-trash"></i></button>':'')+
+    '</div>';
+  }).join('');
+}
+
+async function saveAnn(){
+  const title=document.getElementById('fAnnTitle').value.trim();
+  const body=document.getElementById('fAnnBody').value.trim();
+  if(!title||!body){toast('الرجاء ملء جميع الحقول','err');return;}
+  showLoading();
+  const {data,error}=await db.from('announcements').insert({title,body,author:currentUser.name,type:document.getElementById('fAnnType').value,readers:[]}).select().single();
+  hideLoading();
+  if(!error&&data){
+    announcements.unshift(mapAnn(data));
+    hideModal('annModal');renderAnn();updateSideBadges();updateAnnStats();
+    addNotif('bullhorn','y','📢 تعميم جديد: "'+title+'"');
+    toast('تم نشر التعميم');
+    document.getElementById('fAnnTitle').value='';document.getElementById('fAnnBody').value='';
+  } else {toast('خطأ في النشر','err');console.error(error);}
+}
+
+async function deleteAnn(id){
+  if(!confirm('حذف؟'))return;
+  const {error}=await db.from('announcements').delete().eq('id',id);
+  if(!error){announcements=announcements.filter(a=>a.id!==id);renderAnn();updateAnnStats();toast('تم الحذف');}
+  else{toast('خطأ في الحذف','err');}
+}
+
+async function markAnnRead(id){
+  const a=announcements.find(a=>a.id===id);
+  if(!a||!currentUser||a.readers.includes(currentUser.name))return;
+  a.readers.push(currentUser.name);
+  await db.from('announcements').update({readers:a.readers}).eq('id',id);
+  toast('تم تسجيل قراءتك ✓');addNotif('check-double','g','📖 قرأت: '+a.title);
+  renderAnn();updateSideBadges();updateAnnStats();
+}
+
+function showReaders(id){
+  const a=announcements.find(a=>a.id===id);
+  document.getElementById('readersList').innerHTML=
+    '<div style="margin-bottom:12px;font-size:13px;color:var(--muted)">التعميم: <b>'+a.title+'</b></div>'+
+    (a.readers.length?a.readers.map(r=>'<div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--border)">'+
+      '<div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">'+r[0]+'</div>'+
+      '<div style="font-size:13px;font-weight:600">'+r+'</div>'+
+      '<i class="fas fa-check-circle" style="color:var(--accent);margin-right:auto"></i></div>').join(''):
+      '<div style="text-align:center;padding:20px;color:var(--muted)">لم يقرأ أحد بعد</div>');
+  showModal('readersModal');
+}
+
+// ══════════════════════════════════════════════
+// USERS
+// ══════════════════════════════════════════════
+function renderUsers(){
+  const grid=document.getElementById('usersGrid');if(!grid)return;
+  grid.innerHTML=users.map(u=>
+    '<div class="ucard">'+
+    '<div class="ucard-av" style="background:'+u.color+'">'+u.name[0]+'</div>'+
+    '<div style="font-size:13.5px;font-weight:700;margin-bottom:2px">'+u.name+'</div>'+
+    '<div style="font-size:11px;color:var(--blue);margin-bottom:2px;font-weight:600">@'+u.username+'</div>'+
+    '<div style="font-size:11px;color:var(--muted);margin-bottom:9px">'+u.dept+'</div>'+
+    '<span style="display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;'+(u.role==='admin'?'background:#eff6ff;color:#2563eb':'background:#f0fdf4;color:#16a34a')+'">'+
+    (u.role==='admin'?'مسؤول':'مستخدم')+'</span>'+
+    '<div style="display:flex;gap:6px;margin-top:11px;justify-content:center">'+
+    '<button class="cabt del" style="font-size:11px" onclick="deleteUser('+u.id+')">حذف</button>'+
+    '</div></div>'
+  ).join('');
+}
+
+async function saveUser(){
+  const name=document.getElementById('fUName').value.trim();
+  const username=document.getElementById('fUUsername').value.trim();
+  const pass=document.getElementById('fUPass').value.trim()||'123456';
+  if(!name||!username){toast('الرجاء ملء جميع الحقول','err');return;}
+  if(users.find(u=>u.username===username)){toast('اسم المستخدم موجود مسبقاً','err');return;}
+  showLoading();
+  const colors=['#3b82f6','#8b5cf6','#f59e0b','#22c55e','#ef4444'];
+  const color=colors[users.length%5];
+  const {data,error}=await db.from('users').insert({full_name:name,username,user_password:pass,department:document.getElementById('fUDept').value,role:document.getElementById('fURole').value,color}).select().single();
+  hideLoading();
+  if(!error&&data){users.push(mapUser(data));hideModal('userModal');renderUsers();toast('تمت الإضافة');}
+  else{toast('خطأ في الإضافة','err');console.error(error);}
+}
+
+async function deleteUser(id){
+  if(!confirm('حذف المستخدم؟'))return;
+  const {error}=await db.from('users').delete().eq('id',id);
+  if(!error){users=users.filter(u=>u.id!==id);renderUsers();toast('تم الحذف');}
+  else{toast('خطأ في الحذف','err');}
+}
+
+// ══════════════════════════════════════════════
+// COMPLAINTS
+// ══════════════════════════════════════════════
+function renderComplaintStats(){
+  const el=document.getElementById('complaintStats');if(!el)return;
+  const total=complaints.length,open=complaints.filter(c=>c.status==='open').length;
+  const inp=complaints.filter(c=>c.status==='inprogress').length;
+  const res=complaints.filter(c=>c.status==='resolved').length;
+  const crit=complaints.filter(c=>c.severity==='critical').length;
+  el.innerHTML=
+    '<div class="sc"><div class="sc-ico ic-b"><i class="fas fa-flag"></i></div><div><div class="sc-val">'+total+'</div><div class="sc-lbl">إجمالي</div></div></div>'+
+    '<div class="sc"><div class="sc-ico ic-r"><i class="fas fa-exclamation-circle"></i></div><div><div class="sc-val" style="color:#ef4444">'+open+'</div><div class="sc-lbl">مفتوح</div></div></div>'+
+    '<div class="sc"><div class="sc-ico ic-y"><i class="fas fa-spinner"></i></div><div><div class="sc-val" style="color:#f59e0b">'+inp+'</div><div class="sc-lbl">جاري المعالجة</div></div></div>'+
+    '<div class="sc"><div class="sc-ico ic-g"><i class="fas fa-check-circle"></i></div><div><div class="sc-val" style="color:#22c55e">'+res+'</div><div class="sc-lbl">محلول</div></div></div>'+
+    '<div class="sc" style="border-right:3px solid #ef4444"><div class="sc-ico" style="background:#fef2f2;color:#dc2626"><i class="fas fa-fire"></i></div><div><div class="sc-val" style="color:#dc2626">'+crit+'</div><div class="sc-lbl">حرجة</div></div></div>';
+}
+
+function filterComplaints(f,btn){
+  currentComplaintFilter=f;
+  document.querySelectorAll('#pg-complaints .ftab').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  renderComplaints();
+}
+
+function renderComplaints(){
+  const search=(document.getElementById('complaintSearch')?.value||'').trim();
+  const isAdmin=currentUser?.role==='admin';
+  let list=isAdmin?complaints:complaints.filter(c=>c.reporterDept===currentUser?.dept);
+  if(currentComplaintFilter!=='all') list=list.filter(c=>c.status===currentComplaintFilter);
+  if(search) list=list.filter(c=>c.title.includes(search)||c.desc.includes(search)||c.dept.includes(search));
+  renderComplaintStats();
+  const el=document.getElementById('complaintsList');if(!el)return;
+  if(!list.length){el.innerHTML='<div class="empty-state"><i class="fas fa-flag"></i><p>لا توجد بلاغات</p></div>';return;}
+  const pPct={open:10,inprogress:50,resolved:100,closed:100};
+  const pCol={open:'#ef4444',inprogress:'#f59e0b',resolved:'#22c55e',closed:'#94a3b8'};
+  el.innerHTML=list.map(c=>
+    '<div class="complaint-card sev-'+c.severity+'" onclick="viewComplaint(\''+c.id+'\')">'+
+    '<div class="c-header"><div class="c-number">'+c.id+'</div><div class="c-title">'+c.title+'</div>'+
+    (c.status==='open'&&c.severity==='critical'?'<span style="background:#fef2f2;color:#dc2626;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:20px;animation:pulse 1.5s infinite;flex-shrink:0">🔥 عاجل</span>':'')+
+    '</div>'+
+    '<div class="c-badges">'+
+      '<span class="c-badge '+(TYPE_CLS[c.type]||'type-oth')+'">'+COMPLAINT_TYPES[c.type]+'</span>'+
+      '<span class="c-badge '+(ST_CLS[c.status]||'st-open')+'">'+COMPLAINT_STATUS[c.status]+'</span>'+
+      '<span class="c-badge '+(SV_CLS[c.severity]||'sv-medium')+'">'+COMPLAINT_SEVERITY[c.severity]+'</span>'+
+    '</div>'+
+    '<div class="c-desc">'+c.desc.substring(0,130)+(c.desc.length>130?'...':'')+'</div>'+
+    '<div class="c-progress-wrap"><div class="c-progress-bar" style="width:'+(pPct[c.status]||10)+'%;background:'+(pCol[c.status]||'#94a3b8')+'"></div></div>'+
+    '<div class="c-meta">'+
+      '<span><i class="fas fa-user" style="margin-left:4px"></i>'+c.reporter+'</span>'+
+      '<span><i class="fas fa-building" style="margin-left:4px"></i>'+c.dept+'</span>'+
+      (c.location?'<span><i class="fas fa-map-marker-alt" style="margin-left:4px"></i>'+c.location+'</span>':'')+
+      '<span><i class="fas fa-clock" style="margin-left:4px"></i>'+c.reportTime+'</span>'+
+      (c.assignedTo?'<span style="color:var(--blue)"><i class="fas fa-user-tag" style="margin-left:4px"></i>'+c.assignedTo+'</span>':'')+
+    '</div></div>'
+  ).join('');
+  const badge=document.getElementById('sbComplaintBadge');
+  const oc=complaints.filter(c=>c.status==='open').length;
+  if(badge){badge.textContent=oc;badge.style.display=oc?'inline-block':'none';}
+}
+
+async function saveComplaint(){
+  const title=document.getElementById('fcTitle').value.trim();
+  const desc=document.getElementById('fcDesc').value.trim();
+  if(!title||!desc){toast('الرجاء ملء الحقول المطلوبة','err');return;}
+  const ts=nowStamp();
+  const nid='BLG-'+(String(complaints.length+1).padStart(3,'0'));
+  const dept=document.getElementById('fcDept').value;
+  const type=document.getElementById('fcType').value;
+  const sev=document.getElementById('fcSeverity').value;
+  const loc=document.getElementById('fcLocation').value;
+  const timeline=[{author:currentUser.name,role:currentUser.role==='admin'?'مسؤول':'مستخدم',action:'رفع البلاغ',note:desc,time:ts,color:'#ef4444',icon:'flag'}];
+  showLoading();
+  const {data,error}=await db.from('complaints').insert({
+    id:nid,title,description:desc,department:dept,type,severity:sev,
+    status:'open',location:loc,reporter:currentUser.name,
+    reporter_department:currentUser.dept,assigned_to:null,
+    resolved_time:null,timeline
+  }).select().single();
+  hideLoading();
+  if(!error&&data){
+    complaints.unshift(mapComplaint(data));
+    hideModal('complaintModal');renderComplaints();
+    addNotif('flag',sev==='critical'?'r':'y','🚨 بلاغ جديد: "'+title+'" | '+dept);
+    toast('✅ تم رفع البلاغ — رقمه: '+nid);
+    ['fcTitle','fcDesc','fcLocation'].forEach(id=>document.getElementById(id).value='');
+  } else {toast('خطأ في رفع البلاغ','err');console.error(error);}
+}
+
+function viewComplaint(id){
+  const c=complaints.find(c=>c.id===id);if(!c)return;
+  currentComplaintId=id;
+  document.getElementById('vcTitle').textContent=c.id+' — '+c.title;
+  const pPct={open:10,inprogress:50,resolved:100,closed:100};
+  const pCol={open:'#ef4444',inprogress:'#f59e0b',resolved:'#22c55e',closed:'#94a3b8'};
+  document.getElementById('vcContent').innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:14px">'+
+    '<div><div class="view-label">النوع</div><div class="view-val">'+COMPLAINT_TYPES[c.type]+'</div></div>'+
+    '<div><div class="view-label">الحالة</div><div><span class="c-badge '+(ST_CLS[c.status]||'')+'" style="font-size:12px;padding:4px 12px">'+COMPLAINT_STATUS[c.status]+'</span></div></div>'+
+    '<div><div class="view-label">درجة الخطورة</div><div><span class="c-badge '+(SV_CLS[c.severity]||'')+'" style="font-size:12px;padding:4px 12px">'+COMPLAINT_SEVERITY[c.severity]+'</span></div></div>'+
+    '<div><div class="view-label">الإدارة المعنية</div><div class="view-val">'+c.dept+'</div></div>'+
+    '<div><div class="view-label">المُبلِّغ</div><div class="view-val">'+c.reporter+'</div></div>'+
+    '<div><div class="view-label">وقت الإبلاغ</div><div class="view-val" style="font-weight:700;color:var(--primary)">'+c.reportTime+'</div></div>'+
+    (c.location?'<div><div class="view-label">الموقع</div><div class="view-val"><i class="fas fa-map-marker-alt" style="color:var(--danger);margin-left:4px"></i>'+c.location+'</div></div>':'')+
+    (c.assignedTo?'<div><div class="view-label">مُعين إلى</div><div class="view-val" style="color:var(--blue)">'+c.assignedTo+'</div></div>':'')+
+    (c.resolvedTime?'<div style="grid-column:1/-1"><div class="view-label">✅ وقت الحل</div><div class="view-val" style="color:#16a34a;font-weight:700">'+c.resolvedTime+'</div></div>':'')+
+    '</div>'+
+    '<div style="margin-bottom:12px"><div class="view-label">وصف المشكلة</div><div style="font-size:13px;line-height:1.7;background:#f8fafc;padding:10px 13px;border-radius:8px;margin-top:5px">'+c.desc+'</div></div>'+
+    '<div><div class="view-label">تقدم الحل</div>'+
+    '<div class="c-progress-wrap" style="height:10px;margin-top:6px"><div class="c-progress-bar" style="width:'+(pPct[c.status]||10)+'%;background:'+(pCol[c.status]||'#94a3b8')+'"></div></div>'+
+    '<div style="text-align:left;font-size:11px;color:var(--muted);margin-top:3px">'+(pPct[c.status]||10)+'%</div></div>';
+  const isAdmin=currentUser?.role==='admin';
+  const adminEl=document.getElementById('vcAdminActions');
+  if(adminEl){adminEl.style.display=isAdmin?'block':'none';if(isAdmin){document.getElementById('vcStatus').value=c.status;fillComplaintDeptSelect();}}
+  renderComplaintTimeline(c);
+  showModal('viewComplaintModal');
+}
+
+function renderComplaintTimeline(c){
+  const el=document.getElementById('vcTimeline');if(!el)return;
+  if(!c.timeline||!c.timeline.length){el.innerHTML='<div style="font-size:12px;color:var(--muted)">لا يوجد سجل بعد</div>';return;}
+  el.innerHTML=c.timeline.map(t=>
+    '<div class="timeline-item">'+
+    '<div class="tl-icon" style="background:'+(t.color||'#64748b')+'"><i class="fas fa-'+(t.icon||'info')+'" style="color:#fff;font-size:11px"></i></div>'+
+    '<div class="tl-content"><div class="tl-header">'+
+      '<div><span class="tl-author">'+t.author+'</span> <span style="font-size:10px;padding:2px 6px;border-radius:10px;background:#f1f5f9;color:var(--muted)">'+t.role+'</span> • <span style="font-size:10.5px;color:var(--muted)">'+t.action+'</span></div>'+
+      '<div class="tl-time">'+t.time+'</div></div>'+
+    '<div class="tl-text">'+t.note+'</div></div></div>'
+  ).join('');
+}
+
+async function addComplaintComment(){
+  const inp=document.getElementById('vcCommentInp');
+  if(!inp.value.trim())return;
+  const c=complaints.find(c=>c.id===currentComplaintId);
+  const ts=nowStamp();
+  c.timeline.push({author:currentUser.name,role:currentUser.role==='admin'?'مسؤول':'مستخدم',action:'تعليق',note:inp.value,time:ts,color:'#8b5cf6',icon:'comment'});
+  inp.value='';
+  await db.from('complaints').update({timeline:c.timeline}).eq('id',currentComplaintId);
+  renderComplaintTimeline(c);addNotif('comment','p','💬 تعليق على البلاغ '+c.id);toast('تم إضافة التعليق');
+}
+
+async function updateComplaint(){
+  const c=complaints.find(c=>c.id===currentComplaintId);
+  const newStatus=document.getElementById('vcStatus').value;
+  const assignTo=document.getElementById('vcAssignDept').value;
+  const note=document.getElementById('vcNote').value.trim();
+  const ts=nowStamp();const oldStatus=c.status;
+  c.status=newStatus;c.assignedTo=assignTo;
+  if(newStatus==='resolved'&&!c.resolvedTime) c.resolvedTime=ts;
+  if(newStatus!=='resolved'&&newStatus!=='closed') c.resolvedTime=null;
+  const parts=[];
+  if(oldStatus!==newStatus) parts.push('تغيير الحالة إلى '+COMPLAINT_STATUS[newStatus]);
+  if(assignTo) parts.push('تعيين إلى: '+assignTo);
+  if(note) parts.push(note);
+  c.timeline.push({author:currentUser.name,role:'مسؤول',action:'تحديث البلاغ',note:parts.join(' | '),time:ts,color:newStatus==='resolved'?'#22c55e':newStatus==='inprogress'?'#f59e0b':'#3b82f6',icon:newStatus==='resolved'?'check-circle':'edit'});
+  document.getElementById('vcNote').value='';
+  showLoading();
+  await db.from('complaints').update({status:c.status,assigned_to:c.assignedTo,resolved_time:c.resolvedTime,timeline:c.timeline}).eq('id',currentComplaintId);
+  hideLoading();
+  renderComplaintTimeline(c);renderComplaints();
+  addNotif('flag',newStatus==='resolved'?'g':'b','تم تحديث البلاغ '+c.id);
+  toast('✅ تم تحديث البلاغ');
+  viewComplaint(currentComplaintId);
+}
+
+// ══════════════════════════════════════════════
+// KPI TASKS (in memory only)
+// ══════════════════════════════════════════════
+function saveKpiTask(){
+  const title=document.getElementById('fKpiTitle').value.trim();
+  const indicator=document.getElementById('fKpiIndicator').value.trim();
+  if(!title||!indicator){toast('الرجاء ملء الحقول المطلوبة','err');return;}
+  kpiTasks.unshift({id:'KPI-'+(String(kpiTasks.length+1).padStart(2,'0')),title,indicator,desc:document.getElementById('fKpiDesc').value,priority:document.getElementById('fKpiPriority').value,status:document.getElementById('fKpiStatus').value,comments:[]});
+  hideModal('kpiTaskModal');renderKpiTasks();toast('تمت الإضافة');
+  ['fKpiTitle','fKpiIndicator','fKpiDesc'].forEach(i=>document.getElementById(i).value='');
+}
+
+function renderKpiTasks(){
+  const grid=document.getElementById('kpiTasksGrid');if(!grid)return;
+  if(!kpiTasks.length){grid.innerHTML='<div class="empty-state"><i class="fas fa-chart-line"></i><p>لا توجد مهام مؤشرات</p></div>';return;}
+  const pc={urgent:'prio-urgent',normal:'prio-normal',low:'prio-low'};
+  const pl={urgent:'مستعجلة',normal:'عادية',low:'غير مستعجلة'};
+  const ss={review:'background:#fef9c3;color:#ca8a04',accepted:'background:#dcfce7;color:#16a34a',completed:'background:#d1fae5;color:#065f46'};
+  grid.innerHTML=kpiTasks.map(t=>
+    '<div class="task-card '+(pc[t.priority]||'prio-normal')+'">'+
+    '<div class="card-prio-tag">'+(pl[t.priority]||'عادية')+'</div>'+
+    '<div style="font-size:15px;font-weight:800;margin-top:18px">'+t.title+'</div>'+
+    '<div style="font-size:11.5px;color:var(--muted)">'+t.id+'</div>'+
+    '<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#eff6ff;color:#2563eb"><i class="fas fa-chart-line"></i> '+t.indicator+'</div>'+
+    '<div><span style="display:inline-flex;padding:4px 13px;border-radius:20px;font-size:12px;font-weight:600;'+(ss[t.status]||'background:#f1f5f9;color:#64748b')+'">'+SM[t.status]+'</span></div>'+
+    (t.desc?'<div style="font-size:12.5px;color:var(--muted);line-height:1.5">'+t.desc+'</div>':'')+
+    '<div style="display:flex;gap:5px;margin-top:6px"><button class="cabt del" onclick="kpiTasks=kpiTasks.filter(k=>k.id!==\''+t.id+'\');renderKpiTasks();toast(\'تم الحذف\')">حذف</button></div>'+
+    '</div>'
+  ).join('');
+}
+
+// ══════════════════════════════════════════════
+// MY KPI
+// ══════════════════════════════════════════════
+function renderMyKpi(){
+  const dept=currentUser.dept;
+  const dt=tasks.filter(t=>t.dept===dept);
+  const total=dt.length,done=dt.filter(t=>['completed','accepted'].includes(t.status)).length;
+  const rej=dt.filter(t=>t.status==='rejected').length,rev=dt.filter(t=>t.status==='review').length;
+  const pct=total?Math.round(done/total*100):0;
+  const barCls=pct>=70?'green':pct>=40?'yellow':'red';
+  document.getElementById('deptKpiTitle').textContent='نسب الإنجاز - '+dept;
+  document.getElementById('deptKpiBars').innerHTML=
+    '<div class="ach-item"><div class="ach-hdr"><span class="ach-name">'+dept.replace('إدارة ','').substring(0,15)+'</span><span class="ach-meta">✓'+done+' X'+rej+' '+total+' مهمة</span></div>'+
+    '<div class="ach-bar-wrap"><div class="ach-bar '+barCls+'" style="width:'+pct+'%">'+pct+'%</div></div></div>';
+  document.getElementById('myDeptSummary').innerHTML=
+    '<div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">'+
+    '<div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f0fdf4;border-radius:8px"><span style="font-size:13px">مهام مكتملة/مقبولة</span><b style="color:#16a34a">'+done+'</b></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:10px 14px;background:#fef2f2;border-radius:8px"><span style="font-size:13px">مهام مرفوضة</span><b style="color:#dc2626">'+rej+'</b></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:10px 14px;background:#eff6ff;border-radius:8px"><span style="font-size:13px">قيد المراجعة</span><b style="color:#2563eb">'+rev+'</b></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:10px 14px;background:#fffbeb;border-radius:8px"><span style="font-size:13px">تحتاج دعم</span><b style="color:#d97706">'+dt.filter(t=>t.needSupport).length+'</b></div>'+
+    '</div>';
+  const myCtx=document.getElementById('myStatusChart');
+  if(myCtx){if(chartInstances['myStatus'])chartInstances['myStatus'].destroy();
+    chartInstances['myStatus']=new Chart(myCtx,{type:'doughnut',data:{datasets:[{data:[done,rev,rej,Math.max(0,total-done-rev-rej)],backgroundColor:['#22c55e','#f59e0b','#ef4444','#94a3b8'],borderWidth:0}]},options:{cutout:'60%',plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:false}});}
+}
+
+// ══════════════════════════════════════════════
+// CHAT (in memory)
+// ══════════════════════════════════════════════
+function renderChat(){
+  const isAdmin=currentUser?.role==='admin';
+  const rooms=isAdmin?[{name:'القناة العامة',color:'#0f2744'},{name:'إدارة المشاعر',color:'#8b5cf6'},{name:'إدارة الإعاشة',color:'#22c55e'}]:[{name:'القناة العامة',color:'#0f2744'},{name:'إدارتي',color:'#3b82f6'}];
+  document.getElementById('chatRooms').innerHTML=rooms.map((r,i)=>
+    '<div class="chat-room '+(i===0?'on':'')+'" onclick="switchRoom(this,\''+r.name+'\')">'+
+    '<div class="cr-av" style="background:'+r.color+'">'+r.name[0]+'</div>'+
+    '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:600">'+r.name+'</div></div></div>'
+  ).join('');
+  const msgs=document.getElementById('chatMsgs');
+  msgs.innerHTML=chatMsgs.map(m=>
+    '<div class="msg '+(m.me?'me':'them')+'">'+
+    (!m.me?'<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:2px">'+m.sender+'</div>':'')+
+    '<div class="msg-bub">'+m.txt+'</div>'+
+    '<div class="msg-t">'+m.time+'</div></div>'
+  ).join('');
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function switchRoom(el,name){
+  document.querySelectorAll('.chat-room').forEach(r=>r.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelector('.chat-hdr div:nth-child(2) div:first-child').textContent=name;
+}
+
+function sendMsg(){
+  const inp=document.getElementById('chatInp');
+  if(!inp.value.trim())return;
+  chatMsgs.push({sender:currentUser.name,txt:inp.value,time:nowStamp(),me:true});
+  inp.value='';renderChat();
+}
+
+// ══════════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════════
+function renderNotifs(){
+  const list=document.getElementById('notifList');
+  if(!notifs.length){list.innerHTML='<div class="np-empty"><i class="fas fa-bell-slash" style="font-size:32px;opacity:.2;display:block;margin-bottom:8px"></i>لا توجد إشعارات</div>';document.getElementById('ndot').classList.remove('show');return;}
+  list.innerHTML=notifs.map(n=>
+    '<div class="np-item '+(n.read?'':'unread')+'" onclick="markRead('+n.id+')">'+
+    '<div class="np-ico '+n.tp+'"><i class="fas fa-'+n.ico+'"></i></div>'+
+    '<div style="flex:1"><div class="np-txt">'+n.txt+'</div><div class="np-time">'+n.time+'</div></div>'+
+    (!n.read?'<div class="np-unread-dot"></div>':'')+
+    '</div>'
+  ).join('');
+  const unread=notifs.filter(n=>!n.read).length;
+  document.getElementById('ndot').classList.toggle('show',unread>0);
+}
+
+function toggleNotif(){document.getElementById('notifPanel').classList.toggle('show');}
+function markRead(id){const n=notifs.find(n=>n.id===id);if(n)n.read=true;renderNotifs();}
+function markAllRead(){notifs.forEach(n=>n.read=true);renderNotifs();toast('تم التحديد');}
+function clearAllNotifs(){if(!confirm('مسح كل الإشعارات؟'))return;notifs=[];renderNotifs();toast('تم المسح');}
+function addNotif(ico,tp,txt){
+  const now=new Date();const time=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  notifs.unshift({id:Date.now(),ico,tp,txt,time,read:false});renderNotifs();
+}
+
+function updateSideBadges(){
+  const newT=tasks.filter(t=>t.isNew).length;
+  const myBadge=document.getElementById('sbMyBadge');
+  if(myBadge){myBadge.textContent=newT;myBadge.style.display=newT?'inline-block':'none';}
+  const unreadAnn=announcements.filter(a=>!a.readers.includes(currentUser?.name||'')).length;
+  const annBadge=document.getElementById('sbAnnBadge');
+  if(annBadge){annBadge.textContent=unreadAnn;annBadge.style.display=unreadAnn?'inline-block':'none';}
+}
+
+// ══════════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════════
+function showModal(id){document.getElementById(id).classList.add('show');}
+function hideModal(id){document.getElementById(id).classList.remove('show');}
+
+// ══════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════
+function toast(msg,type){
+  const wrap=document.getElementById('toastWrap');
+  const el=document.createElement('div');
+  el.className='toast'+(type==='err'?' err':type==='warn'?' warn':'');
+  el.innerHTML='<i class="fas fa-'+(type==='err'?'exclamation-circle':type==='warn'?'exclamation-triangle':'check-circle')+'"></i>'+msg;
+  wrap.appendChild(el);
+  setTimeout(()=>el.classList.add('show'),10);
+  setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.remove(),300);},3500);
+}
+
+// ══════════════════════════════════════════════
+// STATS & CHARTS
+// ══════════════════════════════════════════════
+function updateStats(){
+  const t=tasks,total=t.length,done=t.filter(t=>['completed','accepted'].includes(t.status)).length;
+  const rej=t.filter(t=>t.status==='rejected').length,rev=t.filter(t=>t.status==='review').length;
+  const sup=t.filter(t=>t.needSupport).length;
+  const dp=total?Math.round(done/total*100):0;
+  const rp=total?Math.round(rej/total*100):0;
+  const sc=Math.max(0,dp-Math.floor(rp/2));
+  ['ds-total','ds-done','ds-rej','ds-rev'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.textContent=[total,done,rej,rev][i];});
+  const supEl=document.getElementById('ds-support');if(supEl)supEl.textContent=sup;
+  ['hc-dp','kpi-dp'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=dp+'%';});
+  ['hc-rp','kpi-rp'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=rp+'%';});
+  ['hc-score','kpi-score'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=sc;});
+  ['hc-u','kpi-u'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t.filter(t=>t.priority==='urgent').length;});
+  const st=document.getElementById('hc-status');if(st)st.textContent=sc>=70?'جيد 🎉':sc>=40?'متوسط ⚠️':'يحتاج تحسين ⛔';
+  const ka=document.getElementById('kpi-active');if(ka)ka.textContent=users.length;
+}
+
+function updateAchBars(){
+  ['achBars','kpiAchBars'].forEach(cid=>{
+    const el=document.getElementById(cid);if(!el)return;
+    const dn=[...new Set(tasks.map(t=>t.dept))].slice(0,8);
+    if(!dn.length){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">لا توجد بيانات بعد</div>';return;}
+    el.innerHTML=dn.map(d=>{
+      const dt=tasks.filter(t=>t.dept===d);
+      const done=dt.filter(t=>['completed','accepted'].includes(t.status)).length;
+      const rej=dt.filter(t=>t.status==='rejected').length;
+      const pct=dt.length?Math.round(done/dt.length*100):0;
+      const bc=pct>=70?'green':pct>=40?'yellow':'red';
+      const sn=d.replace('إدارة ','').replace('فريق ','').substring(0,14);
+      return '<div class="ach-item"><div class="ach-hdr"><span class="ach-name">'+sn+'</span><span class="ach-meta">✓'+done+' X'+rej+' '+dt.length+' مهمة</span></div>'+
+        '<div class="ach-bar-wrap"><div class="ach-bar '+bc+'" style="width:'+pct+'%">'+pct+'%</div></div></div>';
+    }).join('');
+  });
+}
+
+function updateAnnStats(){
+  const el=document.getElementById('annStats');if(!el)return;
+  const total=announcements.length,urgent=announcements.filter(a=>a.type==='urgent').length;
+  const avgR=total?Math.round(announcements.reduce((s,a)=>s+a.readers.length,0)/total):0;
+  el.innerHTML=
+    '<div class="ann-stat-item yb"><span style="font-size:13px">إجمالي التعاميم</span><span class="ann-stat-val y">'+total+'</span></div>'+
+    '<div class="ann-stat-item ob"><span style="font-size:13px">تعاميم عاجلة</span><span class="ann-stat-val o">'+urgent+'</span></div>'+
+    '<div class="ann-stat-item gb"><span style="font-size:13px">متوسط القراء</span><span class="ann-stat-val g">'+avgR+'</span></div>';
+}
+
+function initCharts(){
+  const hCtx=document.getElementById('healthChart');
+  if(hCtx&&!hCtx._i){hCtx._i=true;chartInstances['health']=new Chart(hCtx,{type:'doughnut',data:{datasets:[{data:[40,60],backgroundColor:['#ef4444','rgba(255,255,255,.15)'],borderWidth:0}]},options:{cutout:'75%',plugins:{legend:{display:false},tooltip:{enabled:false}},responsive:false}});}
+  const kH=document.getElementById('kpiHealth');
+  if(kH&&!kH._i){kH._i=true;chartInstances['kpiHealth']=new Chart(kH,{type:'doughnut',data:{datasets:[{data:[40,60],backgroundColor:['#ef4444','rgba(255,255,255,.15)'],borderWidth:0}]},options:{cutout:'75%',plugins:{legend:{display:false},tooltip:{enabled:false}},responsive:false}});}
+  renderDashCharts();
+}
+
+function renderDashCharts(){
+  const dn=[...new Set(tasks.map(t=>t.dept))].slice(0,6);
+  const sn=dn.map(d=>d.replace('إدارة ','').replace('فريق ','').substring(0,7));
+  const doneD=dn.map(d=>tasks.filter(t=>t.dept===d&&['completed','accepted'].includes(t.status)).length);
+  const rejD=dn.map(d=>tasks.filter(t=>t.dept===d&&t.status==='rejected').length);
+  const urgD=dn.map(d=>tasks.filter(t=>t.dept===d&&t.priority==='urgent').length);
+  const cc=document.getElementById('compChart');
+  if(cc){if(chartInstances['comp'])chartInstances['comp'].destroy();
+    chartInstances['comp']=new Chart(cc,{type:'bar',data:{labels:sn,datasets:[{label:'منجزة',data:doneD,backgroundColor:'rgba(34,197,94,.8)',borderRadius:4},{label:'مرفوضة',data:rejD,backgroundColor:'rgba(239,68,68,.8)',borderRadius:4},{label:'مستعجلة',data:urgD,backgroundColor:'rgba(245,158,11,.8)',borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Tajawal'},boxWidth:12,padding:14}}},scales:{x:{grid:{color:'#f1f5f9'},ticks:{font:{family:'Tajawal'}}},y:{grid:{display:false},ticks:{font:{family:'Tajawal',size:12}}}}}});}
+  const total=tasks.length,done=tasks.filter(t=>['completed','accepted'].includes(t.status)).length,rej=tasks.filter(t=>t.status==='rejected').length,rev=tasks.filter(t=>t.status==='review').length;
+  const sc2=document.getElementById('statusChart');
+  if(sc2){if(chartInstances['status'])chartInstances['status'].destroy();
+    chartInstances['status']=new Chart(sc2,{type:'doughnut',data:{datasets:[{data:[done,rev,rej,Math.max(0,total-done-rej-rev)],backgroundColor:['#22c55e','#f59e0b','#ef4444','#94a3b8'],borderWidth:0}]},options:{cutout:'60%',plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:false}});}
+  const kc=document.getElementById('kpiCompChart');
+  if(kc){if(chartInstances['kpiComp'])chartInstances['kpiComp'].destroy();
+    chartInstances['kpiComp']=new Chart(kc,{type:'bar',data:{labels:sn,datasets:[{label:'منجزة',data:doneD,backgroundColor:'rgba(34,197,94,.8)',borderRadius:4},{label:'مرفوضة',data:rejD,backgroundColor:'rgba(239,68,68,.8)',borderRadius:4},{label:'مستعجلة',data:urgD,backgroundColor:'rgba(245,158,11,.8)',borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Tajawal'},boxWidth:12}}},scales:{x:{grid:{color:'#f1f5f9'},ticks:{font:{family:'Tajawal'}}},y:{grid:{display:false},ticks:{font:{family:'Tajawal',size:12}}}}}});}
+  updateAchBars();updateAnnStats();updateStats();
+}
+
+// ══════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════
+function fmtDate(d){
+  if(!d)return'';
+  try{const dt=new Date(d);const m=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];return dt.getDate()+' '+m[dt.getMonth()]+' '+dt.getFullYear();}catch(e){return d;}
+}
+function nowStamp(){
+  const n=new Date();
+  return n.getDate()+'/'+(n.getMonth()+1)+'/'+n.getFullYear()+' '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
+}
+</script>
+</body>
+</html>
