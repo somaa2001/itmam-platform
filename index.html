@@ -942,6 +942,7 @@ function mapTask(r){
     scheduleType:r.schedule_type||'immediate', scheduleDate:r.schedule_date||null,
     scheduleTime:r.schedule_time||null, repeat:r.repeat_type||null,
     start:r.start_date||'', end:r.end_date||'', file:r.file_name||'',
+    fileUrl:r.file_url||'',
     needSupport:r.need_support||false, submitCount:r.submit_count||0,
     submitTime:r.submit_time||null, approveTime:r.approve_time||null,
     rejectTime:r.reject_time||null, isNew:r.is_new||false,
@@ -956,6 +957,7 @@ function taskToDb(t){
     schedule_type:t.scheduleType||'immediate', schedule_date:t.scheduleDate||null,
     schedule_time:t.scheduleTime||null, repeat_type:t.repeat||null,
     start_date:t.start||null, end_date:t.end||null, file_name:t.file||null,
+    file_url:t.fileUrl||null,
     need_support:t.needSupport||false, submit_count:t.submitCount||0,
     submit_time:t.submitTime||null, approve_time:t.approveTime||null,
     reject_time:t.rejectTime||null, is_new:t.isNew||false,
@@ -1330,7 +1332,18 @@ async function saveTask(){
       const dept=document.getElementById('fDept').value;
       const schedType=document.getElementById('fScheduleType').value;
       const fileInput=document.getElementById('fFile');
-      const fileName=fileInput&&fileInput.files[0]?fileInput.files[0].name:'';
+      let fileName='', fileUrl='';
+      if(fileInput&&fileInput.files[0]){
+        const file=fileInput.files[0];
+        fileName=file.name;
+        const filePath=nid+'/'+file.name;
+        showLoading();
+        const {data:fData,error:fErr}=await db.storage.from('attachments').upload(filePath,file);
+        if(!fErr&&fData){
+          const {data:urlData}=db.storage.from('attachments').getPublicUrl(filePath);
+          fileUrl=urlData?.publicUrl||'';
+        }
+      }
       const newTask={
         id:nid, title, desc:document.getElementById('fDesc').value,
         required:document.getElementById('fRequired').value,
@@ -1342,7 +1355,7 @@ async function saveTask(){
         repeat:document.getElementById('fRepeat')?.value||null,
         start:document.getElementById('fStart').value,
         end:document.getElementById('fEnd').value,
-        file:fileName, comments:[], isNew:true, needSupport:false,
+        file:fileName, fileUrl:fileUrl, comments:[], isNew:true, needSupport:false,
         submitCount:0, submitTime:null, approveTime:null, rejectTime:null
       };
       const {error}=await db.from('tasks').insert(taskToDb(newTask));
@@ -1453,7 +1466,8 @@ function viewTask(id){
     (t.rejectTime?'<div style="grid-column:1/-1"><div class="view-label">❌ وقت الرفض</div><div class="view-val" style="color:#dc2626;font-weight:700">'+t.rejectTime+'</div></div>':'')+
     '</div>'+
     '<div style="margin-bottom:10px"><div class="view-label">الوصف</div><div class="view-val" style="line-height:1.7">'+t.desc+'</div></div>'+
-    (t.required?'<div><div class="view-label">المطلوب</div><div class="view-val" style="line-height:1.7">'+t.required+'</div></div>':'');
+    (t.required?'<div><div class="view-label">المطلوب</div><div class="view-val" style="line-height:1.7">'+t.required+'</div></div>':'')+
+    (t.file?'<div style="margin-top:10px"><div class="view-label">المرفق</div><a href="'+t.fileUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#eff6ff;color:#2563eb;border-radius:8px;font-size:12.5px;font-weight:600;text-decoration:none;margin-top:5px"><i class="fas fa-paperclip"></i>'+t.file+'</a></div>':'');
   renderComments(t);
   const cmtAv=document.getElementById('cmtAv');
   if(cmtAv&&currentUser) cmtAv.textContent=currentUser.name[0];
@@ -1832,37 +1846,58 @@ function renderMyKpi(){
 }
 
 // ══════════════════════════════════════════════
-// CHAT (in memory)
+// CHAT (Supabase)
 // ══════════════════════════════════════════════
-function renderChat(){
+let currentRoom='القناة العامة';
+let chatPolling=null;
+
+async function renderChat(){
   const isAdmin=currentUser?.role==='admin';
-  const rooms=isAdmin?[{name:'القناة العامة',color:'#0f2744'},{name:'إدارة المشاعر',color:'#8b5cf6'},{name:'إدارة الإعاشة',color:'#22c55e'}]:[{name:'القناة العامة',color:'#0f2744'},{name:'إدارتي',color:'#3b82f6'}];
+  const rooms=isAdmin?
+    [{name:'القناة العامة',color:'#0f2744'},{name:'إدارة المشاعر',color:'#8b5cf6'},{name:'إدارة الإعاشة',color:'#22c55e'},{name:'إدارة التسكين',color:'#f59e0b'},{name:'إدارة النقل',color:'#3b82f6'}]:
+    [{name:'القناة العامة',color:'#0f2744'},{name:currentUser.dept,color:'#3b82f6'}];
   document.getElementById('chatRooms').innerHTML=rooms.map((r,i)=>
-    '<div class="chat-room '+(i===0?'on':'')+'" onclick="switchRoom(this,\''+r.name+'\')">'+
+    '<div class="chat-room '+(r.name===currentRoom?'on':'')+'" onclick="switchRoom(this,\''+r.name.replace(/'/g,"\\'")+'\')">'+
     '<div class="cr-av" style="background:'+r.color+'">'+r.name[0]+'</div>'+
     '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:600">'+r.name+'</div></div></div>'
   ).join('');
+  await loadMsgs();
+  if(chatPolling) clearInterval(chatPolling);
+  chatPolling=setInterval(loadMsgs,5000);
+}
+
+async function loadMsgs(){
+  const {data}=await db.from('messages').select('*').eq('room',currentRoom).order('created_at',{ascending:true}).limit(100);
+  if(!data)return;
   const msgs=document.getElementById('chatMsgs');
-  msgs.innerHTML=chatMsgs.map(m=>
-    '<div class="msg '+(m.me?'me':'them')+'">'+
-    (!m.me?'<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:2px">'+m.sender+'</div>':'')+
-    '<div class="msg-bub">'+m.txt+'</div>'+
-    '<div class="msg-t">'+m.time+'</div></div>'
-  ).join('');
-  msgs.scrollTop=msgs.scrollHeight;
+  const wasBottom=msgs.scrollTop+msgs.clientHeight>=msgs.scrollHeight-30;
+  msgs.innerHTML=data.map(m=>{
+    const isMe=m.sender===currentUser?.name;
+    const t=m.created_at?new Date(m.created_at).toLocaleTimeString('ar',{hour:'2-digit',minute:'2-digit'}):'';
+    return '<div class="msg '+(isMe?'me':'them')+'">'+
+      (!isMe?'<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:2px">'+m.sender+(m.sender_dept?' ('+m.sender_dept+')':'')+'</div>':'')+
+      '<div class="msg-bub">'+m.content+'</div>'+
+      '<div class="msg-t">'+t+'</div></div>';
+  }).join('');
+  if(wasBottom) msgs.scrollTop=msgs.scrollHeight;
+  const hdr=document.querySelector('.chat-hdr div:nth-child(2) div:first-child');
+  if(hdr)hdr.textContent=currentRoom;
 }
 
 function switchRoom(el,name){
   document.querySelectorAll('.chat-room').forEach(r=>r.classList.remove('on'));
   el.classList.add('on');
-  document.querySelector('.chat-hdr div:nth-child(2) div:first-child').textContent=name;
+  currentRoom=name;
+  loadMsgs();
 }
 
-function sendMsg(){
+async function sendMsg(){
   const inp=document.getElementById('chatInp');
   if(!inp.value.trim())return;
-  chatMsgs.push({sender:currentUser.name,txt:inp.value,time:nowStamp(),me:true});
-  inp.value='';renderChat();
+  const txt=inp.value.trim();
+  inp.value='';
+  await db.from('messages').insert({room:currentRoom,sender:currentUser.name,sender_dept:currentUser.dept,content:txt});
+  loadMsgs();
 }
 
 // ══════════════════════════════════════════════
