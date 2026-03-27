@@ -678,6 +678,41 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
       <div class="ig"><label>تاريخ البدء</label><input type="date" id="fStart"></div>
       <div class="ig"><label>تاريخ الانتهاء</label><input type="date" id="fEnd"></div>
     </div>
+    <!-- جدولة المهمة -->
+    <div style="background:#f8fafc;border-radius:var(--rs);padding:13px;margin-bottom:12px;border:1px solid var(--border)">
+      <div style="font-size:12.5px;font-weight:700;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="fas fa-clock" style="color:var(--blue)"></i> جدولة ظهور المهمة</div>
+      <div class="ig-row">
+        <div class="ig"><label>نوع الجدولة</label>
+          <select id="fScheduleType" onchange="toggleSchedule()">
+            <option value="immediate">🟢 فوري (تظهر للإدارة الآن)</option>
+            <option value="scheduled">📅 مجدولة (في وقت محدد)</option>
+            <option value="recurring">🔄 متكررة (يومي/أسبوعي/شهري)</option>
+          </select>
+        </div>
+        <div class="ig" id="repeatGroup" style="display:none"><label>التكرار</label>
+          <select id="fRepeat">
+            <option value="daily">يومي</option>
+            <option value="weekly">أسبوعي</option>
+            <option value="monthly">شهري</option>
+          </select>
+        </div>
+      </div>
+      <div id="scheduleFields" style="display:none">
+        <div class="ig-row">
+          <div class="ig"><label>تاريخ الظهور</label><input type="date" id="fSchedDate"></div>
+          <div class="ig"><label>وقت الظهور</label><input type="time" id="fSchedTime"></div>
+        </div>
+      </div>
+    </div>
+    <!-- رفع مرفق -->
+    <div class="ig">
+      <label>المرفق (اختياري)</label>
+      <label class="file-upload-area" id="fileLabel">
+        <i class="fas fa-paperclip"></i>
+        <span id="fileName">اضغط لرفع ملف أو صورة</span>
+        <input type="file" id="fFile" accept="*/*" onchange="handleFileChange(this)">
+      </label>
+    </div>
     <div class="modal-foot">
       <button class="btn-ok" id="btnSaveTask">إضافة المهمة</button>
       <button class="btn-cc" onclick="hideModal('taskModal')">إلغاء</button>
@@ -706,10 +741,13 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
       <button class="btn-cc" onclick="hideModal('viewModal')">إغلاق</button>
     </div>
     <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
-      <div style="font-size:12.5px;font-weight:700;margin-bottom:9px">التعليقات والردود</div>
-      <div id="cmtArea"></div>
-      <div style="display:flex;gap:7px;margin-top:9px">
-        <input type="text" class="chat-inp-f" id="cmtInp" placeholder="أضف تعليقاً...">
+      <div style="font-size:13px;font-weight:800;margin-bottom:11px;color:var(--primary);display:flex;align-items:center;gap:7px">
+        <i class="fas fa-comments" style="color:var(--blue)"></i> الدردشة والتعليقات
+      </div>
+      <div id="cmtArea" style="max-height:220px;overflow-y:auto;margin-bottom:10px;padding:4px 0"></div>
+      <div style="display:flex;gap:7px;align-items:center">
+        <div style="width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0" id="cmtAv">م</div>
+        <input type="text" class="chat-inp-f" id="cmtInp" placeholder="اكتب رسالتك أو تعليقك...">
         <button class="send-btn" onclick="addComment()"><i class="fas fa-paper-plane"></i></button>
       </div>
     </div>
@@ -1223,6 +1261,19 @@ function taskCard(t,showDept,isUser){
   '</div>';
 }
 
+function toggleSchedule(){
+  const t=document.getElementById('fScheduleType').value;
+  document.getElementById('scheduleFields').style.display=t==='immediate'?'none':'block';
+  document.getElementById('repeatGroup').style.display=t==='recurring'?'flex':'none';
+}
+
+function handleFileChange(input){
+  const file=input.files[0];
+  const label=document.getElementById('fileName');
+  if(file){label.textContent='📎 '+file.name;}
+  else{label.textContent='اضغط لرفع ملف أو صورة';}
+}
+
 function openTaskModal(id){
   currentTaskId=id||null;
   document.getElementById('taskModalTitle').textContent=id?'تعديل المهمة':'إضافة مهمة جديدة';
@@ -1238,9 +1289,13 @@ function openTaskModal(id){
     document.getElementById('fStart').value=t.start||'';
     document.getElementById('fEnd').value=t.end||'';
   } else {
-    ['fTitle','fDesc','fRequired','fStart','fEnd'].forEach(i=>document.getElementById(i).value='');
+    ['fTitle','fDesc','fRequired','fStart','fEnd','fSchedDate','fSchedTime'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
     document.getElementById('fStatus').value='review';
     document.getElementById('fPriority').value='normal';
+    document.getElementById('fScheduleType').value='immediate';
+    document.getElementById('scheduleFields').style.display='none';
+    document.getElementById('repeatGroup').style.display='none';
+    document.getElementById('fileName').textContent='اضغط لرفع ملف أو صورة';
     if(currentDept) document.getElementById('fDept').value=currentDept;
   }
   showModal('taskModal');
@@ -1273,15 +1328,21 @@ async function saveTask(){
     } else {
       const nid='HM-'+(Date.now());
       const dept=document.getElementById('fDept').value;
+      const schedType=document.getElementById('fScheduleType').value;
+      const fileInput=document.getElementById('fFile');
+      const fileName=fileInput&&fileInput.files[0]?fileInput.files[0].name:'';
       const newTask={
         id:nid, title, desc:document.getElementById('fDesc').value,
         required:document.getElementById('fRequired').value,
         status:document.getElementById('fStatus').value,
         priority:document.getElementById('fPriority').value,
-        dept, scheduleType:'immediate', published:true,
+        dept, scheduleType:schedType, published:schedType==='immediate',
+        scheduleDate:document.getElementById('fSchedDate')?.value||null,
+        scheduleTime:document.getElementById('fSchedTime')?.value||null,
+        repeat:document.getElementById('fRepeat')?.value||null,
         start:document.getElementById('fStart').value,
         end:document.getElementById('fEnd').value,
-        file:'', comments:[], isNew:true, needSupport:false,
+        file:fileName, comments:[], isNew:true, needSupport:false,
         submitCount:0, submitTime:null, approveTime:null, rejectTime:null
       };
       const {error}=await db.from('tasks').insert(taskToDb(newTask));
@@ -1394,6 +1455,8 @@ function viewTask(id){
     '<div style="margin-bottom:10px"><div class="view-label">الوصف</div><div class="view-val" style="line-height:1.7">'+t.desc+'</div></div>'+
     (t.required?'<div><div class="view-label">المطلوب</div><div class="view-val" style="line-height:1.7">'+t.required+'</div></div>':'');
   renderComments(t);
+  const cmtAv=document.getElementById('cmtAv');
+  if(cmtAv&&currentUser) cmtAv.textContent=currentUser.name[0];
   const isAdmin=currentUser?.role==='admin';
   document.getElementById('adminActions').style.display=isAdmin?'flex':'none';
   document.getElementById('btnApprove').style.display=isAdmin?'block':'none';
