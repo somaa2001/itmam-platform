@@ -1395,7 +1395,8 @@ function buildSidebar(){
     html+=`<div class="sb-sec">الرئيسية</div>
     <div class="sb-item on" data-pg="my-tasks"><i class="fas fa-tasks"></i> مهامي <span class="sb-badge" id="sbMyBadge" style="display:none">0</span></div>
     <div class="sb-sec">الأداء</div>
-    <div class="sb-item" data-pg="my-kpi"><i class="fas fa-chart-bar"></i> مؤشرات إدارتي</div>
+    <div class="sb-item" data-pg="kpi-tasks"><i class="fas fa-chart-line"></i> مهام مؤشرات الدليل <span class="sb-badge" id="sbKpiBadge" style="display:none">0</span></div>
+    <div class="sb-item" data-pg="my-kpi"><i class="fas fa-chart-bar"></i> إحصائيات إدارتي</div>
     <div class="sb-sec">التواصل</div>
     <div class="sb-item" data-pg="announcements"><i class="fas fa-bullhorn"></i> التعاميم <span class="sb-badge" id="sbAnnBadge" style="display:none">0</span></div>
     <div class="sb-item" data-pg="complaints"><i class="fas fa-flag"></i> البلاغات</div>
@@ -1412,7 +1413,7 @@ function buildSidebar(){
 // ══════════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════════
-const TITLES={dashboard:'لوحة التحكم',departments:'الإدارات','dept-tasks':'مهام الإدارة',tasks:'كل المهام','kpi-tasks':'مهام مؤشرات الدليل','my-tasks':'مهامي','my-kpi':'مؤشرات إدارتي',announcements:'التعاميم',complaints:'نظام البلاغات',chat:'الدردشة',users:'إدارة المستخدمين',kpi:'مؤشرات الأداء'};
+const TITLES={dashboard:'لوحة التحكم',departments:'الإدارات','dept-tasks':'مهام الإدارة',tasks:'كل المهام','kpi-tasks':'مهام مؤشرات الدليل','my-tasks':'مهامي','my-kpi':'إحصائيات إدارتي',announcements:'التعاميم',complaints:'نظام البلاغات',chat:'الدردشة',users:'إدارة المستخدمين',kpi:'مؤشرات الأداء'};
 
 function navigate(pg){
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
@@ -2474,6 +2475,13 @@ function updateSideBadges(){
   const unreadAnn=announcements.filter(a=>!a.readers.includes(currentUser?.name||'')).length;
   const annBadge=document.getElementById('sbAnnBadge');
   if(annBadge){annBadge.textContent=unreadAnn;annBadge.style.display=unreadAnn?'inline-block':'none';}
+  // KPI badge — عدد مهام المؤشرات غير المسلمة لإدارة اليوزر
+  const kpiBadge=document.getElementById('sbKpiBadge');
+  if(kpiBadge&&currentUser?.role!=='admin'){
+    const pendingKpi=kpiTasks.filter(t=>t.dept===currentUser?.dept&&t.status==='review'&&(t.submitCount||0)===0).length;
+    kpiBadge.textContent=pendingKpi;
+    kpiBadge.style.display=pendingKpi?'inline-block':'none';
+  }
 }
 
 // ══════════════════════════════════════════════
