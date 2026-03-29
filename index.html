@@ -94,8 +94,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
 .topbar-right{display:flex;align-items:center;gap:9px;}
 .icon-btn{width:36px;height:36px;border-radius:var(--rs);border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:14px;position:relative;transition:.2s;}
 .icon-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
-.ndot{position:absolute;top:4px;right:4px;width:8px;height:8px;background:var(--danger);border-radius:50%;border:2px solid #fff;display:none;animation:pulse 1.5s infinite;}
-.ndot.show{display:block;}
+.ndot{position:absolute;top:-6px;right:-6px;min-width:19px;height:19px;background:#ef4444;border-radius:50%;border:2px solid #fff;display:none;font-size:10px;font-weight:800;color:#fff;align-items:center;justify-content:center;padding:0 3px;box-shadow:0 2px 6px rgba(239,68,68,.5);animation:pulse 2s infinite;}
+.ndot.show{display:flex;}
 .btn-new{background:var(--primary);color:#fff;border:none;padding:8px 16px;border-radius:var(--rs);font-family:'Tajawal',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:.2s;}
 .btn-new:hover{opacity:.88;}
 .body{flex:1;padding:22px 26px;}
@@ -995,9 +995,19 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
     <div id="adminActions" style="display:flex;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
       <button class="btn-ok" id="btnApprove" style="background:#16a34a;display:none" onclick="changeStatus('accepted')">✓ قبول</button>
       <button class="btn-ok" id="btnReject" style="background:#dc2626;display:none" onclick="changeStatus('rejected')">✗ رفض</button>
+      <button class="btn-ok" id="btnIncomplete" style="background:#f59e0b;display:none" onclick="changeStatus('incomplete')">⚠ غير مكتملة</button>
       <button class="btn-cc" onclick="hideModal('viewModal')">إغلاق</button>
     </div>
     <div id="userActions" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <!-- رفع مرفق للتسليم -->
+      <div style="margin-bottom:10px">
+        <label style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:6px;display:block"><i class="fas fa-paperclip" style="margin-left:5px;color:var(--blue)"></i> مرفق التسليم (اختياري)</label>
+        <label class="file-upload-area" style="cursor:pointer">
+          <i class="fas fa-upload"></i>
+          <span id="submitFileName">اضغط لاختيار ملف</span>
+          <input type="file" id="submitFileInp" accept="*/*" style="display:none" onchange="document.getElementById('submitFileName').textContent=this.files[0]?.name||'اضغط لاختيار ملف'">
+        </label>
+      </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
         <button class="cabt submit" id="btnSubmitTask" onclick="submitTask()"><i class="fas fa-paper-plane" style="margin-left:4px"></i> تسليم المهمة</button>
         <button class="cabt support" id="btnRequestSupport" onclick="toggleSupport()"><i class="fas fa-hands-helping" style="margin-left:4px"></i> أحتاج دعم</button>
@@ -1185,7 +1195,7 @@ const DEPTS=[
   {name:'فريق الجودة',icon:'fa-award'},
 ];
 
-const SM={review:'قيد المراجعة',accepted:'مقبولة',rejected:'مرفوضة',completed:'مكتملة',pending:'مستلمة',closed:'مقفلة'};
+const SM={review:'قيد المراجعة',accepted:'مقبولة',rejected:'مرفوضة',completed:'مكتملة',incomplete:'غير مكتملة',pending:'مستلمة',closed:'مقفلة'};
 const PM={urgent:'مستعجلة',normal:'عادية',low:'غير مستعجلة',closed:'مقفلة'};
 const COMPLAINT_TYPES={operational:'⚙️ تشغيلي',technical:'💻 تقني',service:'🤝 خدمي',safety:'🚨 سلامة',financial:'💰 مالي',other:'📋 أخرى'};
 const COMPLAINT_STATUS={open:'🔴 مفتوح',inprogress:'🟡 جاري المعالجة',resolved:'🟢 محلول',closed:'⚫ مغلق'};
@@ -1327,8 +1337,7 @@ async function login(){
     document.getElementById('sbRole').textContent=currentUser.role==='admin'?'مسؤول النظام':'مستخدم - '+currentUser.dept;
     buildSidebar(); fillSelects();
     setTimeout(()=>{initCharts();navigate(currentUser.role==='admin'?'dashboard':'my-tasks');},100);
-    toast('مرحباً '+currentUser.name.split(' ')[0]+'! 👋');
-    addNotif('door-open','b','مرحباً بك في منصة إتمام');
+    
   } catch(e){
     hideLoading();toast('خطأ في الاتصال بقاعدة البيانات','err');console.error(e);
   }
@@ -1517,18 +1526,24 @@ function taskCard(t,showDept,isUser){
   const prioCls='prio-'+(t.priority||'normal');
   const prioLabel={urgent:'مستعجلة',normal:'عادية',low:'غير مستعجلة',closed:'مقفلة'}[t.priority]||'عادية';
   const sStyle={review:'background:#fef9c3;color:#ca8a04',accepted:'background:#dcfce7;color:#16a34a',rejected:'background:#fee2e2;color:#dc2626',completed:'background:#d1fae5;color:#065f46',pending:'background:#ede9fe;color:#7c3aed',closed:'background:#f1f5f9;color:#64748b'}[t.status]||'background:#f1f5f9;color:#64748b';
+  // للمستخدم العادي: الحالة تظهر فقط بعد التسليم أو بعد قبول/رفض الادمن
+  const userCanSeeStatus = isAdmin || (t.submitCount>0) || t.approveTime || t.rejectTime;
+  // للمستخدم العادي: عرض زر تسليم مباشر على الكارت
+  const remainSubmits = 2-(t.submitCount||0);
   return '<div class="task-card '+prioCls+'" id="card-'+t.id+'">' +
     '<div class="card-new-dot'+(t.isNew?' show':'')+'" id="newdot-'+t.id+'"></div>' +
     (t.needSupport?'<div style="position:absolute;top:8px;left:'+(t.isNew?'22':'8')+'px;background:#fef3c7;color:#d97706;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;display:inline-flex;align-items:center;gap:3px"><i class="fas fa-hands-helping"></i> يحتاج دعم</div>':'')+
     '<div class="card-prio-tag">'+prioLabel+'</div>' +
     '<div style="font-size:16px;font-weight:800;color:var(--txt);line-height:1.3;margin-top:18px">'+t.title+'</div>' +
     '<div style="font-size:11.5px;color:var(--muted)">'+t.id+'</div>' +
-    '<div><span style="display:inline-flex;padding:4px 13px;border-radius:20px;font-size:12px;font-weight:600;'+sStyle+'">'+SM[t.status]+'</span></div>' +
+    // الحالة: تُخفى على اليوزر حتى يسلّم أو يقرر الادمن
+    (userCanSeeStatus?'<div><span style="display:inline-flex;padding:4px 13px;border-radius:20px;font-size:12px;font-weight:600;'+sStyle+'">'+SM[t.status]+'</span></div>':
+     (!isAdmin?'<div><span style="display:inline-flex;padding:4px 13px;border-radius:20px;font-size:12px;font-weight:600;background:#f1f5f9;color:#64748b">جديدة — لم تُسلَّم بعد</span></div>':''))+
     (showDept?'<div style="font-size:12px;color:var(--muted)"><i class="fas fa-building" style="margin-left:4px;font-size:10px"></i>'+t.dept+'</div>':'')+
     (t.desc?'<div style="font-size:12.5px;color:#e11d48;font-weight:500;line-height:1.5">'+t.desc+'</div>':'')+
     (t.required?'<div style="font-size:12px;color:var(--muted)"><b>المطلوب:</b> '+t.required+'</div>':'')+
     ((t.start||t.end)?'<div style="font-size:11px;color:#94a3b8;line-height:1.9">'+(t.start?'البدء: '+fmtDate(t.start)+'<br>':'')+(t.end?'الانتهاء: '+fmtDate(t.end):'')+'</div>':'')+
-    (t.submitTime?'<div style="font-size:11px;background:#f0fdf4;color:#16a34a;padding:4px 8px;border-radius:6px"><i class="fas fa-check-circle" style="margin-left:4px"></i>تم التسليم: '+t.submitTime+'</div>':'')+
+    (t.submitTime?'<div style="font-size:11px;background:#f0fdf4;color:#16a34a;padding:4px 8px;border-radius:6px"><i class="fas fa-paper-plane" style="margin-left:4px"></i>تم التسليم: '+t.submitTime+' <span style="opacity:.6">('+t.submitCount+'/2)</span></div>':'')+
     (t.approveTime?'<div style="font-size:11px;background:#f0fdf4;color:#065f46;padding:4px 8px;border-radius:6px"><i class="fas fa-thumbs-up" style="margin-left:4px"></i>تم القبول: '+t.approveTime+'</div>':'')+
     (t.rejectTime?'<div style="font-size:11px;background:#fef2f2;color:#dc2626;padding:4px 8px;border-radius:6px"><i class="fas fa-thumbs-down" style="margin-left:4px"></i>تم الرفض: '+t.rejectTime+'</div>':'')+
     '<div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">' +
@@ -1663,29 +1678,47 @@ async function changeStatus(status){
   t.status=status;
   if(status==='accepted') t.approveTime=ts;
   if(status==='rejected') t.rejectTime=ts;
-  const msg=status==='accepted'?'✅ تم قبول المهمة | وقت القبول: '+ts:'❌ تم رفض المهمة | وقت الرفض: '+ts;
+  if(status==='incomplete') t.rejectTime=ts;
+  const msgs={accepted:'✅ تم قبول المهمة | وقت القبول: '+ts, rejected:'❌ تم رفض المهمة | وقت الرفض: '+ts, incomplete:'⚠️ المهمة غير مكتملة — يرجى إعادة التسليم | الوقت: '+ts};
+  const msg=msgs[status]||'تم تغيير الحالة';
   t.comments.push({author:currentUser.name,txt:msg,time:ts,type:'decision'});
+  // اذا غير مكتملة أعد عداد التسليم لاتاحة تسليم جديد
+  if(status==='incomplete'){t.submitCount=0;t.submitTime=null;}
   showLoading();
   const {error}=await db.from('tasks').update(taskToDb(t)).eq('id',currentTaskId);
   hideLoading();
   if(!error){
     hideModal('viewModal');
-    addNotif('check-circle',status==='accepted'?'g':'r',(status==='accepted'?'✅ قبول':'❌ رفض')+' "'+t.title+'"',currentTaskId,'task');
+    const nc={accepted:'g',rejected:'r',incomplete:'y'};
+    const nl={accepted:'✅ قبول',rejected:'❌ رفض',incomplete:'⚠️ غير مكتملة'};
+    addNotif('check-circle',nc[status]||'b',(nl[status]||'تحديث')+' "'+t.title+'"',currentTaskId,'task');
     refresh(); toast('تم: '+SM[status]);
   } else {toast('خطأ','err');console.error(error);}
 }
 
 async function submitTask(){
   const t=tasks.find(t=>t.id===currentTaskId);
-  if(t.submitCount>=2){toast('انتهت محاولات التسليم (2/2)','err');return;}
+  if((t.submitCount||0)>=2){toast('انتهت محاولات التسليم (2/2)','err');return;}
+  // رفع ملف التسليم إذا وجد
+  const fileInp=document.getElementById('submitFileInp');
+  let fileName='',fileUrl='';
+  if(fileInp&&fileInp.files[0]){
+    const file=fileInp.files[0];fileName=file.name;
+    showLoading();
+    const {data:fd,error:fe}=await db.storage.from('attachments').upload(t.id+'/submit/'+file.name,file,{upsert:true});
+    if(!fe&&fd){const {data:ud}=db.storage.from('attachments').getPublicUrl(t.id+'/submit/'+file.name);fileUrl=ud?.publicUrl||'';}
+    hideLoading();
+  }
   t.submitCount=(t.submitCount||0)+1;
   t.submitTime=nowStamp();
-  t.status='completed';
-  t.comments.push({author:currentUser.name,txt:'✅ تم تسليم المهمة | وقت التسليم: '+t.submitTime,time:t.submitTime,type:'submit'});
+  // الحالة تصبح "قيد المراجعة" وليس مكتملة — الادمن يقرر
+  t.status='review';
+  if(fileName){t.file=fileName;t.fileUrl=fileUrl;}
+  t.comments.push({author:currentUser.name,txt:'📤 تم تسليم المهمة | وقت التسليم: '+t.submitTime+(fileName?' | المرفق: '+fileName:''),time:t.submitTime,type:'submit'});
   showLoading();
   const {error}=await db.from('tasks').update(taskToDb(t)).eq('id',currentTaskId);
   hideLoading();
-  if(!error){hideModal('viewModal');addNotif('check-circle','g','✅ تسليم: "'+t.title+'"');toast('تم التسليم ✅');refresh();}
+  if(!error){hideModal('viewModal');addNotif('check-circle','g','📤 تسليم: "'+t.title+'"',currentTaskId,'task');toast('تم التسليم — قيد المراجعة ✅');refresh();}
   else{toast('خطأ','err');console.error(error);}
 }
 
@@ -1751,13 +1784,19 @@ function viewTask(id){
   renderComments(t);
   const cmtAv=document.getElementById('cmtAv');
   if(cmtAv&&currentUser) cmtAv.textContent=currentUser.name[0];
+  // Reset submit file
+  const sfi=document.getElementById('submitFileInp');if(sfi)sfi.value='';
+  const sfn=document.getElementById('submitFileName');if(sfn)sfn.textContent='اضغط لاختيار ملف';
   // Clear KPI marker
   const cmtInp=document.getElementById('cmtInp');
   if(cmtInp) cmtInp.setAttribute('data-kpi','');
   const isAdmin=currentUser?.role==='admin';
   document.getElementById('adminActions').style.display=isAdmin?'flex':'none';
-  document.getElementById('btnApprove').style.display=isAdmin?'block':'none';
-  document.getElementById('btnReject').style.display=isAdmin?'block':'none';
+  // الادمن يرى أزرار القرار فقط بعد تسليم المهمة
+  const submitted=t.submitCount>0;
+  document.getElementById('btnApprove').style.display=(isAdmin&&submitted)?'block':'none';
+  document.getElementById('btnReject').style.display=(isAdmin&&submitted)?'block':'none';
+  document.getElementById('btnIncomplete').style.display=(isAdmin&&submitted)?'block':'none';
   document.getElementById('userActions').style.display=!isAdmin?'block':'none';
   if(!isAdmin){
     const sb=document.getElementById('btnRequestSupport');
@@ -2120,10 +2159,16 @@ async function saveKpiTask(){
 
 async function loadKpiTasks(){
   const isAdmin=currentUser?.role==='admin';
-  let q=db.from('kpi_tasks').select('*').order('created_at',{ascending:false});
-  if(!isAdmin) q=q.eq('department',currentUser?.dept);
-  const {data}=await q;
-  if(data) kpiTasks=data.map(mapKpiTask);
+  const {data,error}=await db.from('kpi_tasks').select('*').order('created_at',{ascending:false});
+  if(error){console.error('kpi load error',error);return;}
+  if(data){
+    let filtered=data;
+    if(!isAdmin){
+      // اليوزر يرى فقط مهام إدارته أو المهام بدون إدارة محددة
+      filtered=data.filter(r=>!r.department||r.department===currentUser?.dept);
+    }
+    kpiTasks=filtered.map(mapKpiTask);
+  }
 }
 
 function renderKpiTasks(){
@@ -2383,7 +2428,9 @@ function renderNotifs(){
     '</div>'
   ).join('');
   const unread=notifs.filter(n=>!n.read).length;
-  document.getElementById('ndot').classList.toggle('show',unread>0);
+  const ndot=document.getElementById('ndot');
+  if(unread>0){ndot.textContent=unread>99?'99+':unread;ndot.classList.add('show');}
+  else{ndot.textContent='';ndot.classList.remove('show');}
 }
 
 function notifClick(id,taskId,taskType){
