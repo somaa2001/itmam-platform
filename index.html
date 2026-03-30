@@ -2292,7 +2292,7 @@ function renderKpiTasks(){
     const rem=2-(t.submitCount||0);
     return '<div class="task-card '+cardCls+'" id="kcard-'+t.id+'"'+(isLocked?' style="opacity:.8"':'')+'>'+
     '<div class="card-prio-tag">'+(pl[t.priority]||'عادية')+'</div>'+
-    (isLocked&&!isAdmin?'<div style="position:absolute;top:8px;left:8px;background:#f1f5f9;color:#64748b;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;z-index:1"><i class="fas fa-lock" style="margin-left:3px"></i>'+(days!==null&&days>0?'يفتح بعد '+(days-20)+' يوم':'قريباً')+'</div>':'')+
+    (isLocked&&!isAdmin?'<div style="position:absolute;top:8px;left:8px;background:#f1f5f9;color:#64748b;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;z-index:1"><i class="fas fa-lock" style="margin-left:3px"></i>'+(days!==null&&days>20?'يفتح بعد '+(days-20)+' يوم':'قريباً')+'</div>':'')+
     '<div style="font-size:15px;font-weight:800;margin-top:20px">'+t.title+'</div>'+
     '<div style="font-size:11.5px;color:var(--muted)">'+t.id+'</div>'+
     '<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#eff6ff;color:#2563eb"><i class="fas fa-chart-line"></i> '+t.indicator+'</div>'+
@@ -2304,13 +2304,13 @@ function renderKpiTasks(){
     (t.submitTime?'<div style="font-size:11px;background:#f0fdf4;color:#16a34a;padding:4px 8px;border-radius:6px"><i class="fas fa-check-circle" style="margin-left:4px"></i>تسليم: '+t.submitTime+' ('+t.submitCount+'/2)</div>':'')+
     (t.file?'<div style="font-size:11px;color:#2563eb"><i class="fas fa-paperclip" style="margin-left:4px"></i>'+t.file+'</div>':'')+
     '<div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">'+
-      (isAdmin?'<button class="cabt" onclick="editKpiTask(''+t.id+'')">تعديل</button>':'')+
-      (isAdmin?'<button class="cabt del" onclick="deleteKpiTask(''+t.id+'')">حذف</button>':'')+
-      (isAdmin?'<button class="cabt" onclick="kpiChangeStatus(''+t.id+'','accepted')" style="border-color:#86efac;color:#16a34a;background:#f0fdf4">✓ قبول</button>':'')+
-      (isAdmin?'<button class="cabt" onclick="kpiChangeStatus(''+t.id+'','rejected')" style="border-color:#fca5a5;color:#dc2626;background:#fef2f2">✗ رفض</button>':'')+
-      (!isAdmin?(isLocked?'<button class="cabt" disabled style="opacity:.5;font-size:11px;cursor:not-allowed"><i class="fas fa-lock" style="margin-left:3px"></i>'+chkSubmit.reason+'</button>':(rem<=0?'<button class="cabt" disabled style="opacity:.4"><i class="fas fa-lock" style="margin-left:3px"></i>انتهت المحاولات</button>':'<button class="cabt submit" onclick="openKpiSubmitModal(''+t.id+'')"><i class="fas fa-paper-plane" style="margin-left:4px"></i>تسليم ('+rem+')</button>')):'')+
-      (!isAdmin?'<button class="cabt support'+(t.needSupport?' active':'')+'" onclick="toggleKpiSupport(''+t.id+'')">🆘 دعم</button>':'')+
-      '<button class="cabt" onclick="viewKpiTask(''+t.id+'')">عرض</button>'+
+      (isAdmin?'<button class="cabt" onclick="editKpiTask(\''+t.id+'\')">تعديل</button>':'')+
+      (isAdmin?'<button class="cabt del" onclick="deleteKpiTask(\''+t.id+'\')">حذف</button>':'')+
+      (isAdmin?'<button class="cabt" onclick="kpiChangeStatus(\''+t.id+'\',\'accepted\')" style="border-color:#86efac;color:#16a34a;background:#f0fdf4">✓ قبول</button>':'')+
+      (isAdmin?'<button class="cabt" onclick="kpiChangeStatus(\''+t.id+'\',\'rejected\')" style="border-color:#fca5a5;color:#dc2626;background:#fef2f2">✗ رفض</button>':'')+
+      (!isAdmin?(isLocked?'<button class="cabt" disabled style="opacity:.5;font-size:11px;cursor:not-allowed"><i class="fas fa-lock" style="margin-left:3px"></i>'+chkSubmit.reason+'</button>':(rem<=0?'<button class="cabt" disabled style="opacity:.4"><i class="fas fa-lock" style="margin-left:3px"></i>انتهت المحاولات</button>':'<button class="cabt submit" onclick="openKpiSubmitModal(\''+t.id+'\')"><i class="fas fa-paper-plane" style="margin-left:4px"></i>تسليم ('+rem+')</button>')):'')+
+      (!isAdmin?'<button class="cabt support'+(t.needSupport?' active':'')+'" onclick="toggleKpiSupport(\''+t.id+'\')">🆘 دعم</button>':'')+
+      '<button class="cabt" onclick="viewKpiTask(\''+t.id+'\')">عرض</button>'+
     '</div></div>';
   }).join('');
 }
@@ -2854,7 +2854,7 @@ function renderDeptDashboard(){
           '<div style="font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+t.title+'</div>'+
           '<div style="font-size:10.5px;color:'+tag.col+'">'+tag.lbl+'</div>'+
         '</div>'+
-        '<button class="cabt" style="font-size:10px;padding:3px 8px;flex-shrink:0" onclick="viewKpiTask(''+t.id+'')">عرض</button>'+
+        '<button class="cabt" style="font-size:10px;padding:3px 8px;flex-shrink:0" onclick="viewKpiTask(\''+t.id+'\')">عرض</button>'+
       '</div>';
     }).join('');
 }
