@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --primary:#0f2744;--primary2:#1a3a5c;--accent:#1db954;
@@ -887,10 +888,13 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
             <div style="font-size:20px;font-weight:800;color:var(--primary)">لوحة مؤشرات الدليل — حج 1447</div>
             <div style="font-size:12px;color:var(--muted);margin-top:3px">نظرة شاملة على أداء جميع الإدارات في مهام المؤشرات</div>
           </div>
-          <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
             <button class="ftab on" onclick="setKpiDashFilter('all',this)">الكل</button>
             <button class="ftab" onclick="setKpiDashFilter('جودة الخدمات',this)">⭐ جودة الخدمات</button>
             <button class="ftab" onclick="setKpiDashFilter('الامتثال والالتزام',this)">📋 الامتثال والالتزام</button>
+            <button onclick="downloadKpiReport()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:linear-gradient(135deg,#0f2744,#1a3a5c);color:#d1ae37;border:1.5px solid #d1ae37;border-radius:8px;font-family:Tajawal,sans-serif;font-weight:700;font-size:13px;cursor:pointer">
+              <i class="fas fa-download"></i> تحميل التقرير
+            </button>
           </div>
         </div>
 
@@ -2959,6 +2963,202 @@ function renderDashCharts(){
 // ADMIN KPI DASHBOARD
 // ══════════════════════════════════════════════
 let akdFilter='all';
+
+async function downloadKpiReport(){
+  const btn=event.currentTarget;
+  btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> جاري التحضير...';
+  btn.disabled=true;
+  try{
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const W=210,H=297;
+    
+    // ── الجدول الهجري ──
+    const MONTHS_H=[
+      {y:1447,m:1,d:'2025-07-27'},{y:1447,m:2,d:'2025-08-26'},
+      {y:1447,m:3,d:'2025-09-24'},{y:1447,m:4,d:'2025-10-23'},
+      {y:1447,m:5,d:'2025-11-22'},{y:1447,m:6,d:'2025-12-21'},
+      {y:1447,m:7,d:'2026-01-20'},{y:1447,m:8,d:'2026-01-19'},
+      {y:1447,m:9,d:'2026-02-18'},{y:1447,m:10,d:'2026-03-20'},
+      {y:1447,m:11,d:'2026-04-18'},{y:1447,m:12,d:'2026-05-18'},
+      {y:1448,m:1,d:'2026-06-17'},
+    ];
+    const MN=['محرم','صفر','ربيع الأول','ربيع الثاني','جمادى الأولى','جمادى الثانية','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+    function getHijri(dateStr){
+      const d=new Date(dateStr+'T00:00:00');
+      for(let i=0;i<MONTHS_H.length-1;i++){
+        const s=new Date(MONTHS_H[i].d+'T00:00:00'),ns=new Date(MONTHS_H[i+1].d+'T00:00:00');
+        if(d>=s&&d<ns){const dy=Math.round((d-s)/86400000)+1;return dy+' '+MN[MONTHS_H[i].m-1]+' '+MONTHS_H[i].y+'هـ';}
+      }
+      return dateStr;
+    }
+    const todayStr=new Date().toISOString().split('T')[0];
+    const todayHijri=getHijri(todayStr);
+    const todayMiladi=new Date().toLocaleDateString('ar-SA',{year:'numeric',month:'long',day:'numeric'});
+
+    // ── الألوان ──
+    const NAVY=[15,39,68],GOLD=[209,174,55],WHITE=[255,255,255],LGRAY=[245,247,250],DGRAY=[100,116,139];
+
+    // ── الهيدر ──
+    doc.setFillColor(...NAVY);doc.rect(0,0,W,42,'F');
+    // شعار نص إتمام
+    doc.setTextColor(...GOLD);doc.setFont('helvetica','bold');doc.setFontSize(28);
+    doc.text('ITMAM',W-15,16,{align:'right'});
+    doc.setFontSize(11);doc.setTextColor(180,200,220);
+    doc.text('\u0634\u0631\u0643\u0629 \u0642\u0627\u0641\u0644\u0629 \u0627\u0644\u0625\u062a\u0645\u0627\u0645 \u0644\u0644\u062d\u062c',W-15,24,{align:'right'});
+    // عنوان التقرير
+    doc.setTextColor(...WHITE);doc.setFontSize(16);doc.setFont('helvetica','bold');
+    doc.text('KPI Report - Hajj 1447',15,16);
+    doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(180,200,220);
+    doc.text('Performance Indicators - Itmam Platform',15,24);
+    // التاريخ
+    doc.setFillColor(...GOLD);doc.roundedRect(15,28,80,9,2,2,'F');
+    doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(9);
+    doc.text(todayStr+'  |  '+todayHijri,55,34,{align:'center'});
+
+    // ── ملخص عام ──
+    let y=52;
+    const list=kpiTasks;
+    const total=list.length,done=list.filter(t=>['completed','accepted'].includes(t.status)).length;
+    const rej=list.filter(t=>t.status==='rejected').length;
+    const rev=list.filter(t=>t.status==='review'&&(t.submitCount||0)>0).length;
+    const pend=list.filter(t=>t.status==='review'&&!(t.submitCount||0)).length;
+    const pct=total?Math.round(done/total*100):0;
+
+    // بطاقات الملخص
+    const cards=[
+      {label:'Total KPIs',val:total,col:[59,130,246]},
+      {label:'Completed',val:done,col:[34,197,94]},
+      {label:'In Review',val:rev,col:[245,158,11]},
+      {label:'Rejected',val:rej,col:[239,68,68]},
+      {label:'Pending',val:pend,col:[148,163,184]},
+      {label:'Rate',val:pct+'%',col:pct>=70?[34,197,94]:pct>=40?[245,158,11]:[239,68,68]},
+    ];
+    const cw=28,gap=4,startX=15;
+    cards.forEach((c,i)=>{
+      const cx=startX+i*(cw+gap);
+      doc.setFillColor(...c.col);doc.roundedRect(cx,y,cw,18,2,2,'F');
+      doc.setTextColor(...WHITE);doc.setFont('helvetica','bold');doc.setFontSize(14);
+      doc.text(String(c.val),cx+cw/2,y+10,{align:'center'});
+      doc.setFontSize(6);doc.setFont('helvetica','normal');
+      doc.text(c.label,cx+cw/2,y+15,{align:'center'});
+    });
+    y+=26;
+
+    // ── شريط التقدم ──
+    doc.setFillColor(...LGRAY);doc.roundedRect(15,y,W-30,6,3,3,'F');
+    if(pct>0){doc.setFillColor(34,197,94);doc.roundedRect(15,y,(W-30)*pct/100,6,3,3,'F');}
+    doc.setTextColor(...DGRAY);doc.setFontSize(8);
+    doc.text('Overall Completion: '+pct+'%',W-15,y+5,{align:'right'});
+    y+=12;
+
+    // ── جدول الإدارات ──
+    doc.setFillColor(...NAVY);doc.rect(15,y,W-30,8,'F');
+    doc.setTextColor(...WHITE);doc.setFont('helvetica','bold');doc.setFontSize(9);
+    doc.text('Department Performance Summary',W/2,y+5.5,{align:'center'});
+    y+=8;
+
+    const depts=[...new Set(list.map(t=>t.dept).filter(Boolean))];
+    const colW=[65,20,20,20,20,25];
+    const headers=['Department','Total','Done','Review','Reject','Rate %'];
+    // رأس الجدول
+    doc.setFillColor(230,235,245);doc.rect(15,y,W-30,7,'F');
+    doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(7.5);
+    let cx2=15;
+    headers.forEach((h,i)=>{doc.text(h,cx2+colW[i]/2,y+5,{align:'center'});cx2+=colW[i];});
+    y+=7;
+
+    depts.forEach((dept,di)=>{
+      const dt=list.filter(t=>t.dept===dept);
+      const dd=dt.filter(t=>['completed','accepted'].includes(t.status)).length;
+      const dr=dt.filter(t=>t.status==='rejected').length;
+      const drev=dt.filter(t=>t.status==='review'&&(t.submitCount||0)>0).length;
+      const dpct=dt.length?Math.round(dd/dt.length*100):0;
+      const rowH=7;
+      doc.setFillColor(di%2===0?255:248,di%2===0?255:250,di%2===0?255:252);
+      doc.rect(15,y,W-30,rowH,'F');
+      doc.setDrawColor(220,225,235);doc.rect(15,y,W-30,rowH,'S');
+      doc.setTextColor(30,40,60);doc.setFont('helvetica','normal');doc.setFontSize(7);
+      // اسم الإدارة مختصر
+      const dn=dept.replace('إدارة ','').replace('فريق ','').substring(0,30);
+      doc.text(dn,cx2=15+2,y+4.5);
+      const vals=[dt.length,dd,drev,dr,dpct+'%'];
+      let vx=15+colW[0];
+      vals.forEach((v,vi)=>{
+        const col=vi===4?(dpct>=70?[34,197,94]:dpct>=40?[245,158,11]:[239,68,68]):[50,60,80];
+        doc.setTextColor(...col);doc.setFont('helvetica',vi===4?'bold':'normal');
+        doc.text(String(v),vx+colW[vi+1]/2,y+4.5,{align:'center'});
+        vx+=colW[vi+1];
+      });
+      y+=rowH;
+      if(y>H-30){doc.addPage();y=20;}
+    });
+
+    y+=8;
+    // ── تفاصيل المهام ──
+    if(y+15<H-30){
+      doc.setFillColor(...NAVY);doc.rect(15,y,W-30,8,'F');
+      doc.setTextColor(...WHITE);doc.setFont('helvetica','bold');doc.setFontSize(9);
+      doc.text('KPI Tasks Detail',W/2,y+5.5,{align:'center'});
+      y+=8;
+    }
+
+    const tHeaders=['#','Title','Dept','Criteria','End Date','Status'];
+    const tCols=[8,58,42,28,22,22];
+    doc.setFillColor(230,235,245);doc.rect(15,y,W-30,7,'F');
+    doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(7);
+    let thx=15;
+    tHeaders.forEach((h,i)=>{doc.text(h,thx+tCols[i]/2,y+5,{align:'center'});thx+=tCols[i];});
+    y+=7;
+
+    const statusColors={review:[245,158,11],accepted:[34,197,94],completed:[16,185,129],rejected:[239,68,68]};
+    const statusLabels={review:'Review',accepted:'Accepted',completed:'Completed',rejected:'Rejected'};
+    
+    list.forEach((t,idx)=>{
+      if(y>H-15){doc.addPage();y=20;}
+      const rowH=7;
+      doc.setFillColor(idx%2===0?255:248,idx%2===0?255:250,idx%2===0?255:252);
+      doc.rect(15,y,W-30,rowH,'F');
+      doc.setDrawColor(220,225,235);doc.rect(15,y,W-30,rowH,'S');
+      doc.setTextColor(50,60,80);doc.setFont('helvetica','normal');doc.setFontSize(6.5);
+      const cols2=[
+        String(idx+1),
+        (t.title||'').substring(0,30),
+        (t.dept||'').replace('إدارة ','').substring(0,20),
+        (t.criteria||'').substring(0,15),
+        t.endDate?getHijri(t.endDate).split(' ').slice(0,2).join(' '):'-',
+        statusLabels[t.status]||t.status||'—',
+      ];
+      let tx=15;
+      cols2.forEach((v,vi)=>{
+        if(vi===5){
+          const sc=statusColors[t.status]||[148,163,184];
+          doc.setTextColor(...sc);doc.setFont('helvetica','bold');
+        }else{
+          doc.setTextColor(50,60,80);doc.setFont('helvetica','normal');
+        }
+        doc.text(String(v),tx+tCols[vi]/2,y+4.5,{align:'center'});
+        tx+=tCols[vi];
+      });
+      y+=rowH;
+    });
+
+    // ── الفوتر ──
+    const pageCount=doc.internal.getNumberOfPages();
+    for(let i=1;i<=pageCount;i++){
+      doc.setPage(i);
+      doc.setFillColor(...NAVY);doc.rect(0,H-12,W,12,'F');
+      doc.setTextColor(...GOLD);doc.setFont('helvetica','bold');doc.setFontSize(8);
+      doc.text('ITMAM Platform © 1447 AH',15,H-5);
+      doc.setTextColor(150,170,190);doc.setFont('helvetica','normal');
+      doc.text('Page '+i+' of '+pageCount,W-15,H-5,{align:'right'});
+    }
+
+    doc.save('itmam-kpi-report-'+todayStr+'.pdf');
+  }catch(e){console.error(e);toast('خطأ في التحميل','err');}
+  btn.innerHTML='<i class="fas fa-download"></i> تحميل التقرير';
+  btn.disabled=false;
+}
 let akdCharts={};
 
 function setKpiDashFilter(f,btn){
