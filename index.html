@@ -8,7 +8,6 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --primary:#0f2744;--primary2:#1a3a5c;--accent:#1db954;
@@ -2970,199 +2969,234 @@ function renderDashCharts(){
 // ══════════════════════════════════════════════
 let akdFilter='all';
 
-async function downloadKpiReport(){
+function downloadKpiReport(){
   const btn=event.currentTarget;
   btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> جاري التحضير...';
   btn.disabled=true;
-  try{
-    const {jsPDF}=window.jspdf;
-    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const W=210,H=297;
-    
-    // ── الجدول الهجري ──
-    const MONTHS_H=[
-      {y:1447,m:1,d:'2025-07-27'},{y:1447,m:2,d:'2025-08-26'},
-      {y:1447,m:3,d:'2025-09-24'},{y:1447,m:4,d:'2025-10-23'},
-      {y:1447,m:5,d:'2025-11-22'},{y:1447,m:6,d:'2025-12-21'},
-      {y:1447,m:7,d:'2026-01-20'},{y:1447,m:8,d:'2026-01-19'},
-      {y:1447,m:9,d:'2026-02-18'},{y:1447,m:10,d:'2026-03-20'},
-      {y:1447,m:11,d:'2026-04-18'},{y:1447,m:12,d:'2026-05-18'},
-      {y:1448,m:1,d:'2026-06-17'},
-    ];
-    const MN=['محرم','صفر','ربيع الأول','ربيع الثاني','جمادى الأولى','جمادى الثانية','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
-    function getHijri(dateStr){
-      const d=new Date(dateStr+'T00:00:00');
-      for(let i=0;i<MONTHS_H.length-1;i++){
-        const s=new Date(MONTHS_H[i].d+'T00:00:00'),ns=new Date(MONTHS_H[i+1].d+'T00:00:00');
-        if(d>=s&&d<ns){const dy=Math.round((d-s)/86400000)+1;return dy+' '+MN[MONTHS_H[i].m-1]+' '+MONTHS_H[i].y+'هـ';}
-      }
-      return dateStr;
+
+  // التاريخ الهجري
+  const MONTHS_H=[
+    {y:1447,m:1,d:'2025-07-27'},{y:1447,m:2,d:'2025-08-26'},
+    {y:1447,m:3,d:'2025-09-24'},{y:1447,m:4,d:'2025-10-23'},
+    {y:1447,m:5,d:'2025-11-22'},{y:1447,m:6,d:'2025-12-21'},
+    {y:1447,m:7,d:'2026-01-20'},{y:1447,m:8,d:'2026-01-19'},
+    {y:1447,m:9,d:'2026-02-18'},{y:1447,m:10,d:'2026-03-20'},
+    {y:1447,m:11,d:'2026-04-18'},{y:1447,m:12,d:'2026-05-18'},
+    {y:1448,m:1,d:'2026-06-17'},
+  ];
+  const MN=['محرم','صفر','ربيع الأول','ربيع الثاني','جمادى الأولى','جمادى الثانية','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+  function getH(ds){
+    if(!ds||!ds.includes('-')) return ds||'';
+    const d=new Date(ds+'T00:00:00');
+    for(let i=0;i<MONTHS_H.length-1;i++){
+      const s=new Date(MONTHS_H[i].d+'T00:00:00'),ns=new Date(MONTHS_H[i+1].d+'T00:00:00');
+      if(d>=s&&d<ns){return (Math.round((d-s)/86400000)+1)+' '+MN[MONTHS_H[i].m-1]+' '+MONTHS_H[i].y+'هـ';}
     }
-    const todayStr=new Date().toISOString().split('T')[0];
-    const todayHijri=getHijri(todayStr);
-    const todayMiladi=new Date().toLocaleDateString('ar-SA',{year:'numeric',month:'long',day:'numeric'});
+    return ds;
+  }
+  const todayStr=new Date().toISOString().split('T')[0];
+  const todayH=getH(todayStr);
+  const todayM=new Date().toLocaleDateString('ar-SA-u-nu-latn',{year:'numeric',month:'long',day:'numeric'});
 
-    // ── الألوان ──
-    const NAVY=[15,39,68],GOLD=[209,174,55],WHITE=[255,255,255],LGRAY=[245,247,250],DGRAY=[100,116,139];
+  // إحصائيات عامة
+  const allT=tasks.length, allDone=tasks.filter(t=>t.status==='completed'||t.status==='accepted').length;
+  const allRej=tasks.filter(t=>t.status==='rejected').length;
+  const allRev=tasks.filter(t=>t.status==='review'&&(t.submitCount||0)>0).length;
+  const allPend=tasks.filter(t=>t.status==='review'&&!(t.submitCount||0)).length;
+  const allPct=allT?Math.round(allDone/allT*100):0;
 
-    // ── الهيدر ──
-    doc.setFillColor(...NAVY);doc.rect(0,0,W,42,'F');
-    // شعار نص إتمام
-    doc.setTextColor(...GOLD);doc.setFont('helvetica','bold');doc.setFontSize(28);
-    doc.text('ITMAM',W-15,16,{align:'right'});
-    doc.setFontSize(11);doc.setTextColor(180,200,220);
-    doc.text('\u0634\u0631\u0643\u0629 \u0642\u0627\u0641\u0644\u0629 \u0627\u0644\u0625\u062a\u0645\u0627\u0645 \u0644\u0644\u062d\u062c',W-15,24,{align:'right'});
-    // عنوان التقرير
-    doc.setTextColor(...WHITE);doc.setFontSize(16);doc.setFont('helvetica','bold');
-    doc.text('KPI Report - Hajj 1447',15,16);
-    doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(180,200,220);
-    doc.text('Performance Indicators - Itmam Platform',15,24);
-    // التاريخ
-    doc.setFillColor(...GOLD);doc.roundedRect(15,28,80,9,2,2,'F');
-    doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(9);
-    doc.text(todayStr+'  |  '+todayHijri,55,34,{align:'center'});
+  // إحصائيات KPI
+  const kTotal=kpiTasks.length, kDone=kpiTasks.filter(t=>['completed','accepted'].includes(t.status)).length;
+  const kRej=kpiTasks.filter(t=>t.status==='rejected').length;
+  const kRev=kpiTasks.filter(t=>t.status==='review'&&(t.submitCount||0)>0).length;
+  const kPend=kpiTasks.filter(t=>!(t.submitCount||0)).length;
+  const kPct=kTotal?Math.round(kDone/kTotal*100):0;
 
-    // ── ملخص عام ──
-    let y=52;
-    const list=kpiTasks;
-    const total=list.length,done=list.filter(t=>['completed','accepted'].includes(t.status)).length;
-    const rej=list.filter(t=>t.status==='rejected').length;
-    const rev=list.filter(t=>t.status==='review'&&(t.submitCount||0)>0).length;
-    const pend=list.filter(t=>t.status==='review'&&!(t.submitCount||0)).length;
-    const pct=total?Math.round(done/total*100):0;
+  // إحصائيات الإدارات للمهام العادية
+  const deptStats={};
+  tasks.forEach(t=>{
+    if(!t.dept)return;
+    if(!deptStats[t.dept])deptStats[t.dept]={total:0,done:0,rev:0,rej:0};
+    deptStats[t.dept].total++;
+    if(t.status==='completed'||t.status==='accepted')deptStats[t.dept].done++;
+    else if(t.status==='review'&&(t.submitCount||0)>0)deptStats[t.dept].rev++;
+    else if(t.status==='rejected')deptStats[t.dept].rej++;
+  });
 
-    // بطاقات الملخص
-    const cards=[
-      {label:'Total KPIs',val:total,col:[59,130,246]},
-      {label:'Completed',val:done,col:[34,197,94]},
-      {label:'In Review',val:rev,col:[245,158,11]},
-      {label:'Rejected',val:rej,col:[239,68,68]},
-      {label:'Pending',val:pend,col:[148,163,184]},
-      {label:'Rate',val:pct+'%',col:pct>=70?[34,197,94]:pct>=40?[245,158,11]:[239,68,68]},
-    ];
-    const cw=28,gap=4,startX=15;
-    cards.forEach((c,i)=>{
-      const cx=startX+i*(cw+gap);
-      doc.setFillColor(...c.col);doc.roundedRect(cx,y,cw,18,2,2,'F');
-      doc.setTextColor(...WHITE);doc.setFont('helvetica','bold');doc.setFontSize(14);
-      doc.text(String(c.val),cx+cw/2,y+10,{align:'center'});
-      doc.setFontSize(6);doc.setFont('helvetica','normal');
-      doc.text(c.label,cx+cw/2,y+15,{align:'center'});
-    });
-    y+=26;
+  // إحصائيات الإدارات للمؤشرات
+  const kDeptStats={};
+  kpiTasks.forEach(t=>{
+    if(!t.dept)return;
+    if(!kDeptStats[t.dept])kDeptStats[t.dept]={total:0,done:0,rev:0,rej:0};
+    kDeptStats[t.dept].total++;
+    if(['completed','accepted'].includes(t.status))kDeptStats[t.dept].done++;
+    else if(t.status==='review'&&(t.submitCount||0)>0)kDeptStats[t.dept].rev++;
+    else if(t.status==='rejected')kDeptStats[t.dept].rej++;
+  });
 
-    // ── شريط التقدم ──
-    doc.setFillColor(...LGRAY);doc.roundedRect(15,y,W-30,6,3,3,'F');
-    if(pct>0){doc.setFillColor(34,197,94);doc.roundedRect(15,y,(W-30)*pct/100,6,3,3,'F');}
-    doc.setTextColor(...DGRAY);doc.setFontSize(8);
-    doc.text('Overall Completion: '+pct+'%',W-15,y+5,{align:'right'});
-    y+=12;
+  const SM2={review:'قيد المراجعة',accepted:'مقبولة',rejected:'مرفوضة',completed:'مكتملة',incomplete:'غير مكتملة',pending:'مستلمة',closed:'مقفلة'};
 
-    // ── جدول الإدارات ──
-    doc.setFillColor(...NAVY);doc.rect(15,y,W-30,8,'F');
-    doc.setTextColor(...WHITE);doc.setFont('helvetica','bold');doc.setFontSize(9);
-    doc.text('Department Performance Summary',W/2,y+5.5,{align:'center'});
-    y+=8;
+  const html=`<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تقرير منصة إتمام — ${todayH}</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Tajawal',sans-serif;background:#f0f4f8;color:#1e293b;direction:rtl;}
+@media print{
+  body{background:#fff;}
+  .no-print{display:none!important;}
+  .page-break{page-break-before:always;}
+  @page{margin:15mm;size:A4;}
+}
+/* ── HEADER ── */
+.header{background:linear-gradient(135deg,#0a1e38 0%,#1a3a5c 60%,#0f2744 100%);color:#fff;padding:28px 36px;display:flex;align-items:center;justify-content:space-between;border-bottom:4px solid #d1ae37;}
+.header-logo{display:flex;flex-direction:column;}
+.logo-name{font-size:38px;font-weight:900;color:#d1ae37;letter-spacing:2px;}
+.logo-sub{font-size:13px;color:rgba(255,255,255,.65);margin-top:3px;}
+.header-info{text-align:left;}
+.report-title{font-size:20px;font-weight:800;color:#fff;}
+.report-date{margin-top:8px;background:rgba(209,174,55,.15);border:1px solid #d1ae37;border-radius:8px;padding:6px 14px;display:inline-block;}
+.date-hijri{font-size:16px;font-weight:800;color:#d1ae37;}
+.date-miladi{font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;}
+/* ── BODY ── */
+.body{padding:24px 36px;}
+.section-title{font-size:17px;font-weight:800;color:#0f2744;border-right:5px solid #d1ae37;padding-right:12px;margin:24px 0 14px;}
+/* ── STAT CARDS ── */
+.stat-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:20px;}
+.stat-card{background:#fff;border-radius:10px;padding:14px 10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.stat-card .val{font-size:26px;font-weight:900;}
+.stat-card .lbl{font-size:10px;color:#64748b;margin-top:4px;font-weight:700;}
+.stat-card.blue .val{color:#2563eb;} .stat-card.blue{border-top:4px solid #2563eb;}
+.stat-card.green .val{color:#16a34a;} .stat-card.green{border-top:4px solid #22c55e;}
+.stat-card.orange .val{color:#d97706;} .stat-card.orange{border-top:4px solid #f59e0b;}
+.stat-card.red .val{color:#dc2626;} .stat-card.red{border-top:4px solid #ef4444;}
+.stat-card.gray .val{color:#64748b;} .stat-card.gray{border-top:4px solid #94a3b8;}
+.stat-card.gold .val{color:#b45309;} .stat-card.gold{border-top:4px solid #d1ae37;}
+/* ── PROGRESS ── */
+.progress-wrap{background:#e2e8f0;border-radius:50px;height:14px;margin-bottom:8px;overflow:hidden;}
+.progress-bar{height:100%;border-radius:50px;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width .3s;}
+/* ── TABLE ── */
+table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;}
+thead tr{background:#0f2744;color:#fff;}
+thead th{padding:9px 10px;text-align:center;font-weight:700;}
+tbody tr:nth-child(even){background:#f8fafc;}
+tbody tr:hover{background:#f0f9ff;}
+tbody td{padding:8px 10px;text-align:center;border-bottom:1px solid #e2e8f0;}
+tbody td.dept-name{text-align:right;font-weight:700;}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.badge-green{background:#dcfce7;color:#16a34a;}
+.badge-yellow{background:#fef9c3;color:#ca8a04;}
+.badge-red{background:#fee2e2;color:#dc2626;}
+.badge-gray{background:#f1f5f9;color:#64748b;}
+.pct-good{color:#16a34a;font-weight:800;}
+.pct-med{color:#d97706;font-weight:800;}
+.pct-bad{color:#dc2626;font-weight:800;}
+/* ── FOOTER ── */
+.footer{background:#0f2744;color:rgba(255,255,255,.6);padding:14px 36px;display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-top:20px;}
+.footer span{color:#d1ae37;font-weight:700;}
+.print-btn{position:fixed;bottom:24px;left:24px;background:#d1ae37;color:#0f2744;border:none;padding:14px 28px;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.25);z-index:999;}
+</style>
+</head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
 
-    const depts=[...new Set(list.map(t=>t.dept).filter(Boolean))];
-    const colW=[65,20,20,20,20,25];
-    const headers=['Department','Total','Done','Review','Reject','Rate %'];
-    // رأس الجدول
-    doc.setFillColor(230,235,245);doc.rect(15,y,W-30,7,'F');
-    doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(7.5);
-    let cx2=15;
-    headers.forEach((h,i)=>{doc.text(h,cx2+colW[i]/2,y+5,{align:'center'});cx2+=colW[i];});
-    y+=7;
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <div class="logo-name">إتمام</div>
+    <div class="logo-sub">شركة قافلة الإتمام للحج</div>
+  </div>
+  <div class="header-info">
+    <div class="report-title">📊 تقرير الأداء الشامل — منصة إتمام</div>
+    <div class="report-date">
+      <div class="date-hijri">${todayH}</div>
+      <div class="date-miladi">${todayM}</div>
+    </div>
+  </div>
+</div>
 
-    depts.forEach((dept,di)=>{
-      const dt=list.filter(t=>t.dept===dept);
-      const dd=dt.filter(t=>['completed','accepted'].includes(t.status)).length;
-      const dr=dt.filter(t=>t.status==='rejected').length;
-      const drev=dt.filter(t=>t.status==='review'&&(t.submitCount||0)>0).length;
-      const dpct=dt.length?Math.round(dd/dt.length*100):0;
-      const rowH=7;
-      doc.setFillColor(di%2===0?255:248,di%2===0?255:250,di%2===0?255:252);
-      doc.rect(15,y,W-30,rowH,'F');
-      doc.setDrawColor(220,225,235);doc.rect(15,y,W-30,rowH,'S');
-      doc.setTextColor(30,40,60);doc.setFont('helvetica','normal');doc.setFontSize(7);
-      // اسم الإدارة مختصر
-      const dn=dept.replace('إدارة ','').replace('فريق ','').substring(0,30);
-      doc.text(dn,cx2=15+2,y+4.5);
-      const vals=[dt.length,dd,drev,dr,dpct+'%'];
-      let vx=15+colW[0];
-      vals.forEach((v,vi)=>{
-        const col=vi===4?(dpct>=70?[34,197,94]:dpct>=40?[245,158,11]:[239,68,68]):[50,60,80];
-        doc.setTextColor(...col);doc.setFont('helvetica',vi===4?'bold':'normal');
-        doc.text(String(v),vx+colW[vi+1]/2,y+4.5,{align:'center'});
-        vx+=colW[vi+1];
-      });
-      y+=rowH;
-      if(y>H-30){doc.addPage();y=20;}
-    });
+<div class="body">
 
-    y+=8;
-    // ── تفاصيل المهام ──
-    if(y+15<H-30){
-      doc.setFillColor(...NAVY);doc.rect(15,y,W-30,8,'F');
-      doc.setTextColor(...WHITE);doc.setFont('helvetica','bold');doc.setFontSize(9);
-      doc.text('KPI Tasks Detail',W/2,y+5.5,{align:'center'});
-      y+=8;
-    }
+<!-- ══ المهام العادية ══ -->
+<div class="section-title">📋 المهام العادية — ملخص عام</div>
+<div class="stat-row">
+  <div class="stat-card blue"><div class="val">${allT}</div><div class="lbl">إجمالي المهام</div></div>
+  <div class="stat-card green"><div class="val">${allDone}</div><div class="lbl">مقبولة / مكتملة</div></div>
+  <div class="stat-card orange"><div class="val">${allRev}</div><div class="lbl">قيد المراجعة</div></div>
+  <div class="stat-card red"><div class="val">${allRej}</div><div class="lbl">مرفوضة</div></div>
+  <div class="stat-card gray"><div class="val">${allPend}</div><div class="lbl">لم تُسلَّم</div></div>
+  <div class="stat-card gold"><div class="val">${allPct}%</div><div class="lbl">نسبة الإنجاز</div></div>
+</div>
+<div class="progress-wrap"><div class="progress-bar" style="width:${allPct}%"></div></div>
+<div style="font-size:11px;color:#64748b;margin-bottom:16px">نسبة الإنجاز الكلية للمهام العادية: <b>${allPct}%</b></div>
 
-    const tHeaders=['#','Title','Dept','Criteria','End Date','Status'];
-    const tCols=[8,58,42,28,22,22];
-    doc.setFillColor(230,235,245);doc.rect(15,y,W-30,7,'F');
-    doc.setTextColor(...NAVY);doc.setFont('helvetica','bold');doc.setFontSize(7);
-    let thx=15;
-    tHeaders.forEach((h,i)=>{doc.text(h,thx+tCols[i]/2,y+5,{align:'center'});thx+=tCols[i];});
-    y+=7;
+<!-- جدول الإدارات - مهام عادية -->
+<table>
+  <thead><tr><th>الإدارة</th><th>الإجمالي</th><th>مكتملة</th><th>مراجعة</th><th>مرفوضة</th><th>نسبة الإنجاز</th></tr></thead>
+  <tbody>
+    ${Object.entries(deptStats).map(([dept,s])=>{
+      const pct=s.total?Math.round(s.done/s.total*100):0;
+      return `<tr><td class="dept-name">${dept}</td><td>${s.total}</td><td>${s.done}</td><td>${s.rev}</td><td>${s.rej}</td><td class="${pct>=70?'pct-good':pct>=40?'pct-med':'pct-bad'}">${pct}%</td></tr>`;
+    }).join('')}
+  </tbody>
+</table>
 
-    const statusColors={review:[245,158,11],accepted:[34,197,94],completed:[16,185,129],rejected:[239,68,68]};
-    const statusLabels={review:'Review',accepted:'Accepted',completed:'Completed',rejected:'Rejected'};
-    
-    list.forEach((t,idx)=>{
-      if(y>H-15){doc.addPage();y=20;}
-      const rowH=7;
-      doc.setFillColor(idx%2===0?255:248,idx%2===0?255:250,idx%2===0?255:252);
-      doc.rect(15,y,W-30,rowH,'F');
-      doc.setDrawColor(220,225,235);doc.rect(15,y,W-30,rowH,'S');
-      doc.setTextColor(50,60,80);doc.setFont('helvetica','normal');doc.setFontSize(6.5);
-      const cols2=[
-        String(idx+1),
-        (t.title||'').substring(0,30),
-        (t.dept||'').replace('إدارة ','').substring(0,20),
-        (t.criteria||'').substring(0,15),
-        t.endDate?getHijri(t.endDate).split(' ').slice(0,2).join(' '):'-',
-        statusLabels[t.status]||t.status||'—',
-      ];
-      let tx=15;
-      cols2.forEach((v,vi)=>{
-        if(vi===5){
-          const sc=statusColors[t.status]||[148,163,184];
-          doc.setTextColor(...sc);doc.setFont('helvetica','bold');
-        }else{
-          doc.setTextColor(50,60,80);doc.setFont('helvetica','normal');
-        }
-        doc.text(String(v),tx+tCols[vi]/2,y+4.5,{align:'center'});
-        tx+=tCols[vi];
-      });
-      y+=rowH;
-    });
+<!-- ══ مؤشرات الدليل ══ -->
+<div class="page-break"></div>
+<div class="section-title">📊 مؤشرات الدليل — حج 1447</div>
+<div class="stat-row">
+  <div class="stat-card blue"><div class="val">${kTotal}</div><div class="lbl">إجمالي المؤشرات</div></div>
+  <div class="stat-card green"><div class="val">${kDone}</div><div class="lbl">مقبولة / مكتملة</div></div>
+  <div class="stat-card orange"><div class="val">${kRev}</div><div class="lbl">قيد المراجعة</div></div>
+  <div class="stat-card red"><div class="val">${kRej}</div><div class="lbl">مرفوضة</div></div>
+  <div class="stat-card gray"><div class="val">${kPend}</div><div class="lbl">لم تُسلَّم</div></div>
+  <div class="stat-card gold"><div class="val">${kPct}%</div><div class="lbl">نسبة الإنجاز</div></div>
+</div>
+<div class="progress-wrap"><div class="progress-bar" style="width:${kPct}%"></div></div>
+<div style="font-size:11px;color:#64748b;margin-bottom:16px">نسبة الإنجاز الكلية للمؤشرات: <b>${kPct}%</b></div>
 
-    // ── الفوتر ──
-    const pageCount=doc.internal.getNumberOfPages();
-    for(let i=1;i<=pageCount;i++){
-      doc.setPage(i);
-      doc.setFillColor(...NAVY);doc.rect(0,H-12,W,12,'F');
-      doc.setTextColor(...GOLD);doc.setFont('helvetica','bold');doc.setFontSize(8);
-      doc.text('ITMAM Platform © 1447 AH',15,H-5);
-      doc.setTextColor(150,170,190);doc.setFont('helvetica','normal');
-      doc.text('Page '+i+' of '+pageCount,W-15,H-5,{align:'right'});
-    }
+<!-- جدول الإدارات - مؤشرات -->
+<table>
+  <thead><tr><th>الإدارة</th><th>الإجمالي</th><th>مكتملة</th><th>مراجعة</th><th>مرفوضة</th><th>نسبة الإنجاز</th></tr></thead>
+  <tbody>
+    ${Object.entries(kDeptStats).map(([dept,s])=>{
+      const pct=s.total?Math.round(s.done/s.total*100):0;
+      return `<tr><td class="dept-name">${dept}</td><td>${s.total}</td><td>${s.done}</td><td>${s.rev}</td><td>${s.rej}</td><td class="${pct>=70?'pct-good':pct>=40?'pct-med':'pct-bad'}">${pct}%</td></tr>`;
+    }).join('')}
+  </tbody>
+</table>
 
-    doc.save('itmam-kpi-report-'+todayStr+'.pdf');
-  }catch(e){console.error(e);toast('خطأ في التحميل','err');}
-  btn.innerHTML='<i class="fas fa-download"></i> تحميل التقرير';
+<!-- ══ تفاصيل مهام المؤشرات ══ -->
+<div class="page-break"></div>
+<div class="section-title">📋 تفاصيل مهام المؤشرات</div>
+<table>
+  <thead><tr><th>#</th><th>عنوان المؤشر</th><th>الإدارة</th><th>المعيار</th><th>تاريخ الانتهاء</th><th>الحالة</th></tr></thead>
+  <tbody>
+    ${kpiTasks.map((t,i)=>{
+      const st={review:'badge-yellow',accepted:'badge-green',completed:'badge-green',rejected:'badge-red'}[t.status]||'badge-gray';
+      const eh=t.endDate?getH(t.endDate):'—';
+      return `<tr><td>${i+1}</td><td style="text-align:right">${t.title||'—'}</td><td>${(t.dept||'').replace('إدارة ','')}</td><td style="font-size:10px">${t.criteria||'—'}</td><td style="font-size:10px">${eh}</td><td><span class="badge ${st}">${SM2[t.status]||t.status}</span></td></tr>`;
+    }).join('')}
+  </tbody>
+</table>
+
+</div><!-- end body -->
+
+<!-- FOOTER -->
+<div class="footer">
+  <span>منصة إتمام</span>
+  <div>شركة قافلة الإتمام للحج — جميع الحقوق محفوظة © ${todayH}</div>
+  <div>تاريخ التقرير: ${todayM}</div>
+</div>
+</body></html>`;
+
+  const w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  btn.innerHTML='<i class="fas fa-file-download"></i> تحميل تقرير المؤشرات PDF';
   btn.disabled=false;
 }
 let akdCharts={};
