@@ -2320,7 +2320,7 @@ function mapKpiTask(r){
     criteria:r.criteria||'',
     desc:r.description||'', priority:r.priority||'normal',
     status:r.status||'review', dept:r.department||'',
-    endDate:r.end_date||null,
+    startDate:r.start_date||null, endDate:r.end_date||null,
     file:r.file_name||'', fileUrl:r.file_url||'',
     needSupport:r.need_support||false, submitCount:r.submit_count||0,
     submitTime:r.submit_time||null, approveTime:r.approve_time||null,
@@ -2408,7 +2408,35 @@ function renderKpiTasks(){
     '<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#eff6ff;color:#2563eb"><i class="fas fa-chart-line"></i> '+t.indicator+'</div>'+
     (t.criteria?'<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:'+(t.criteria==='جودة الخدمات'?'#faf5ff;color:#7c3aed':'#f0fdf4;color:#16a34a')+'"><i class="fas fa-'+(t.criteria==='جودة الخدمات'?'star':'check-double')+'"></i> معيار '+t.criteria+'</div>':'')+
     (t.dept?'<div style="font-size:11px;color:var(--muted)"><i class="fas fa-building" style="margin-left:4px"></i>'+t.dept+'</div>':'')+
-    (t.endDate?(()=>{const h=toHijri(t.endDate);const dl=daysLabel(days);const isUrgent=days!==null&&days<=10;const isNear=days!==null&&days<=20;const col=isUrgent?'#dc2626':isNear?'#d97706':'var(--muted)';const fw=isUrgent?'font-weight:800':isNear?'font-weight:700':'';return '<div style="font-size:11px;color:'+col+';'+fw+'"><i class="fas fa-calendar-alt" style="margin-left:4px"></i>'+h+(dl?' — '+dl:'')+'</div>';})():'')+
+    (()=>{
+      const sh=toHijri(t.startDate);const eh=toHijri(t.endDate);
+      let html='';
+      // تاريخ البداية
+      if(sh) html+='<div style="font-size:10.5px;color:var(--muted)"><i class="fas fa-play-circle" style="margin-left:4px;color:#3b82f6"></i>البداية: '+sh+'</div>';
+      // تاريخ الانتهاء + العداد
+      if(eh||t.endDate){
+        const locked=(t.priority==='low')&&days!==null&&days>20;
+        if(locked){
+          // مقفلة — أيام حتى الفتح
+          const daysToOpen=days-20;
+          html+='<div style="font-size:10.5px;background:#f1f5f9;color:#64748b;padding:4px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:5px"><i class="fas fa-lock"></i>تفتح بعد '+daysToOpen+' يوم | الانتهاء: '+eh+'</div>';
+        } else if(days!==null&&days<0){
+          // انتهت
+          html+='<div style="font-size:10.5px;background:#fef2f2;color:#dc2626;padding:4px 8px;border-radius:6px;font-weight:700"><i class="fas fa-exclamation-circle" style="margin-left:4px"></i>انتهت منذ '+Math.abs(days)+' يوم | '+eh+'</div>';
+        } else if(days!==null&&days===0){
+          html+='<div style="font-size:10.5px;background:#fef2f2;color:#dc2626;padding:4px 8px;border-radius:6px;font-weight:800"><i class="fas fa-fire" style="margin-left:4px"></i>آخر يوم! | '+eh+'</div>';
+        } else if(days!==null&&days<=10){
+          html+='<div style="font-size:10.5px;background:#fff7ed;color:#ea580c;padding:4px 8px;border-radius:6px;font-weight:700"><i class="fas fa-clock" style="margin-left:4px"></i>متبقي '+days+' يوم | '+eh+'</div>';
+        } else if(days!==null&&days<=20){
+          html+='<div style="font-size:10.5px;background:#fefce8;color:#ca8a04;padding:4px 8px;border-radius:6px;font-weight:600"><i class="fas fa-clock" style="margin-left:4px"></i>متبقي '+days+' يوم | '+eh+'</div>';
+        } else {
+          html+='<div style="font-size:10.5px;color:var(--muted)"><i class="fas fa-calendar-check" style="margin-left:4px"></i>الانتهاء: '+eh+'</div>';
+        }
+      } else if(t.endDate){
+        html+='<div style="font-size:10.5px;color:var(--muted)"><i class="fas fa-calendar-alt" style="margin-left:4px"></i>'+t.endDate+'</div>';
+      }
+      return html;
+    })()+
     '<div><span style="display:inline-flex;padding:4px 13px;border-radius:20px;font-size:12px;font-weight:600;'+(ss[t.status]||'background:#f1f5f9;color:#64748b')+'">'+SM[t.status]+'</span></div>'+
     (t.needSupport?'<div style="background:#fef3c7;color:#d97706;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:4px"><i class="fas fa-hands-helping"></i> يحتاج دعم</div>':'')+
     (t.submitTime?'<div style="font-size:11px;background:#f0fdf4;color:#16a34a;padding:4px 8px;border-radius:6px"><i class="fas fa-check-circle" style="margin-left:4px"></i>تسليم: '+t.submitTime+' ('+t.submitCount+'/2)</div>':'')+
