@@ -2411,29 +2411,32 @@ function renderKpiTasks(){
     (()=>{
       const sh=toHijri(t.startDate);const eh=toHijri(t.endDate);
       let html='';
-      // تاريخ البداية
+      // ── تاريخ البداية دائماً ──
       if(sh) html+='<div style="font-size:10.5px;color:var(--muted)"><i class="fas fa-play-circle" style="margin-left:4px;color:#3b82f6"></i>البداية: '+sh+'</div>';
-      // تاريخ الانتهاء + العداد
+      // ── تاريخ الانتهاء + العداد الذكي ──
       if(eh||t.endDate){
+        const endDisplay=eh||(t.endDate||'');
         const locked=(t.priority==='low')&&days!==null&&days>20;
         if(locked){
-          // مقفلة — أيام حتى الفتح
           const daysToOpen=days-20;
-          html+='<div style="font-size:10.5px;background:#f1f5f9;color:#64748b;padding:4px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:5px"><i class="fas fa-lock"></i>تفتح بعد '+daysToOpen+' يوم | الانتهاء: '+eh+'</div>';
+          html+='<div style="font-size:10.5px;background:#f1f5f9;color:#64748b;padding:4px 8px;border-radius:6px"><i class="fas fa-lock" style="margin-left:4px"></i>تفتح بعد <b>'+daysToOpen+'</b> يوم</div>';
+          html+='<div style="font-size:10.5px;color:var(--muted)"><i class="fas fa-flag-checkered" style="margin-left:4px"></i>الانتهاء: '+endDisplay+'</div>';
         } else if(days!==null&&days<0){
-          // انتهت
-          html+='<div style="font-size:10.5px;background:#fef2f2;color:#dc2626;padding:4px 8px;border-radius:6px;font-weight:700"><i class="fas fa-exclamation-circle" style="margin-left:4px"></i>انتهت منذ '+Math.abs(days)+' يوم | '+eh+'</div>';
+          html+='<div style="font-size:10.5px;background:#fef2f2;color:#dc2626;padding:4px 8px;border-radius:6px;font-weight:700"><i class="fas fa-exclamation-circle" style="margin-left:4px"></i>انتهت منذ <b>'+Math.abs(days)+'</b> يوم</div>';
+          html+='<div style="font-size:10.5px;color:#dc2626"><i class="fas fa-flag-checkered" style="margin-left:4px"></i>كان الموعد: '+endDisplay+'</div>';
         } else if(days!==null&&days===0){
-          html+='<div style="font-size:10.5px;background:#fef2f2;color:#dc2626;padding:4px 8px;border-radius:6px;font-weight:800"><i class="fas fa-fire" style="margin-left:4px"></i>آخر يوم! | '+eh+'</div>';
+          html+='<div style="font-size:10.5px;background:#fef2f2;color:#dc2626;padding:4px 8px;border-radius:6px;font-weight:800"><i class="fas fa-fire" style="margin-left:4px"></i>آخر يوم اليوم!</div>';
+          html+='<div style="font-size:10.5px;color:#dc2626"><i class="fas fa-flag-checkered" style="margin-left:4px"></i>الانتهاء: '+endDisplay+'</div>';
         } else if(days!==null&&days<=10){
-          html+='<div style="font-size:10.5px;background:#fff7ed;color:#ea580c;padding:4px 8px;border-radius:6px;font-weight:700"><i class="fas fa-clock" style="margin-left:4px"></i>متبقي '+days+' يوم | '+eh+'</div>';
+          html+='<div style="font-size:10.5px;background:#fff7ed;color:#ea580c;padding:4px 8px;border-radius:6px;font-weight:700"><i class="fas fa-clock" style="margin-left:4px"></i>متبقي <b>'+days+'</b> يوم</div>';
+          html+='<div style="font-size:10.5px;color:#ea580c"><i class="fas fa-flag-checkered" style="margin-left:4px"></i>الانتهاء: '+endDisplay+'</div>';
         } else if(days!==null&&days<=20){
-          html+='<div style="font-size:10.5px;background:#fefce8;color:#ca8a04;padding:4px 8px;border-radius:6px;font-weight:600"><i class="fas fa-clock" style="margin-left:4px"></i>متبقي '+days+' يوم | '+eh+'</div>';
+          html+='<div style="font-size:10.5px;background:#fefce8;color:#ca8a04;padding:4px 8px;border-radius:6px;font-weight:600"><i class="fas fa-clock" style="margin-left:4px"></i>متبقي <b>'+days+'</b> يوم</div>';
+          html+='<div style="font-size:10.5px;color:#ca8a04"><i class="fas fa-flag-checkered" style="margin-left:4px"></i>الانتهاء: '+endDisplay+'</div>';
         } else {
-          html+='<div style="font-size:10.5px;color:var(--muted)"><i class="fas fa-calendar-check" style="margin-left:4px"></i>الانتهاء: '+eh+'</div>';
+          html+='<div style="font-size:10.5px;color:var(--muted)"><i class="fas fa-clock" style="margin-left:4px"></i>متبقي <b>'+(days||'?')+'</b> يوم</div>';
+          html+='<div style="font-size:10.5px;color:var(--muted)"><i class="fas fa-flag-checkered" style="margin-left:4px"></i>الانتهاء: '+endDisplay+'</div>';
         }
-      } else if(t.endDate){
-        html+='<div style="font-size:10.5px;color:var(--muted)"><i class="fas fa-calendar-alt" style="margin-left:4px"></i>'+t.endDate+'</div>';
       }
       return html;
     })()+
