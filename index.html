@@ -1470,6 +1470,30 @@ window.onload=function(){
   document.getElementById('btnLogin').onclick=login;
   document.getElementById('inpPass').onkeypress=e=>{if(e.key==='Enter')login();};
   document.getElementById('sbFoot').onclick=logout;
+  // استعادة الجلسة تلقائياً
+  try{
+    const saved=localStorage.getItem('itmam_session');
+    if(saved){
+      const {username,password}=JSON.parse(saved);
+      if(username&&password){
+        showLoading();
+        db.from('users').select('*').eq('username',username).eq('user_password',password).single()
+          .then(async({data,error})=>{
+            hideLoading();
+            if(error||!data){localStorage.removeItem('itmam_session');return;}
+            currentUser=mapUser(data);
+            await loadAllData();
+            document.getElementById('landingPage').style.display='none';
+            document.getElementById('appLayout').classList.add('show');
+            document.getElementById('sbAv').textContent=currentUser.name[0];
+            document.getElementById('sbName').textContent=currentUser.name.split(' ').slice(0,2).join(' ');
+            document.getElementById('sbRole').textContent=currentUser.role==='admin'?'مسؤول النظام':'مستخدم - '+currentUser.dept;
+            buildSidebar();fillSelects();
+            setTimeout(()=>{initCharts();navigate(currentUser.role==='admin'?'dashboard':'my-tasks');updateSideBadges();},100);
+          }).catch(()=>{hideLoading();localStorage.removeItem('itmam_session');});
+      }
+    }
+  }catch(e){localStorage.removeItem('itmam_session');}
   document.getElementById('btnNotif').onclick=toggleNotif;
   document.getElementById('btnBack').onclick=()=>navigate('departments');
   document.getElementById('cmtInp').onkeypress=e=>{if(e.key==='Enter')addComment();};
@@ -1519,6 +1543,8 @@ async function login(){
     const {data,error}=await db.from('users').select('*').eq('username',username).eq('user_password',pass).single();
     if(error||!data){hideLoading();toast('اسم المستخدم أو كلمة المرور غير صحيحة','err');return;}
     currentUser=mapUser(data);
+    // حفظ الجلسة في localStorage
+    localStorage.setItem('itmam_session', JSON.stringify({username:data.username, password:pass}));
     await loadAllData();
     hideModal('loginOverlay');
     document.getElementById('landingPage').style.display='none';
@@ -1553,6 +1579,7 @@ async function loadAllData(){
 function logout(){
   if(chatPolling)clearInterval(chatPolling);
   if(presencePolling)clearInterval(presencePolling);
+  localStorage.removeItem('itmam_session');
   currentUser=null;tasks=[];users=[];announcements=[];complaints=[];kpiTasks=[];
   document.getElementById('landingPage').style.display='flex';
   document.getElementById('appLayout').classList.remove('show');
@@ -2970,235 +2997,196 @@ function renderDashCharts(){
 let akdFilter='all';
 
 function downloadKpiReport(){
-  const btn=event.currentTarget;
+  var btn=event.currentTarget;
   btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> جاري التحضير...';
   btn.disabled=true;
 
-  // التاريخ الهجري
-  const MONTHS_H=[
+  var MONTHS_H=[
     {y:1447,m:1,d:'2025-07-27'},{y:1447,m:2,d:'2025-08-26'},
     {y:1447,m:3,d:'2025-09-24'},{y:1447,m:4,d:'2025-10-23'},
     {y:1447,m:5,d:'2025-11-22'},{y:1447,m:6,d:'2025-12-21'},
     {y:1447,m:7,d:'2026-01-20'},{y:1447,m:8,d:'2026-01-19'},
     {y:1447,m:9,d:'2026-02-18'},{y:1447,m:10,d:'2026-03-20'},
     {y:1447,m:11,d:'2026-04-18'},{y:1447,m:12,d:'2026-05-18'},
-    {y:1448,m:1,d:'2026-06-17'},
+    {y:1448,m:1,d:'2026-06-17'}
   ];
-  const MN=['محرم','صفر','ربيع الأول','ربيع الثاني','جمادى الأولى','جمادى الثانية','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+  var MN=['محرم','صفر','ربيع الأول','ربيع الثاني','جمادى الأولى','جمادى الثانية','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
   function getH(ds){
-    if(!ds||!ds.includes('-')) return ds||'';
-    const d=new Date(ds+'T00:00:00');
-    for(let i=0;i<MONTHS_H.length-1;i++){
-      const s=new Date(MONTHS_H[i].d+'T00:00:00'),ns=new Date(MONTHS_H[i+1].d+'T00:00:00');
-      if(d>=s&&d<ns){return (Math.round((d-s)/86400000)+1)+' '+MN[MONTHS_H[i].m-1]+' '+MONTHS_H[i].y+'هـ';}
+    if(!ds||!ds.includes('-'))return ds||'';
+    var d=new Date(ds+'T00:00:00');
+    for(var i=0;i<MONTHS_H.length-1;i++){
+      var s=new Date(MONTHS_H[i].d+'T00:00:00'),ns=new Date(MONTHS_H[i+1].d+'T00:00:00');
+      if(d>=s&&d<ns)return (Math.round((d-s)/86400000)+1)+' '+MN[MONTHS_H[i].m-1]+' '+MONTHS_H[i].y+'هـ';
     }
     return ds;
   }
-  const todayStr=new Date().toISOString().split('T')[0];
-  const todayH=getH(todayStr);
-  const todayM=new Date().toLocaleDateString('ar-SA-u-nu-latn',{year:'numeric',month:'long',day:'numeric'});
+  var todayStr=new Date().toISOString().split('T')[0];
+  var todayH=getH(todayStr);
 
-  // إحصائيات عامة
-  const allT=tasks.length, allDone=tasks.filter(t=>t.status==='completed'||t.status==='accepted').length;
-  const allRej=tasks.filter(t=>t.status==='rejected').length;
-  const allRev=tasks.filter(t=>t.status==='review'&&(t.submitCount||0)>0).length;
-  const allPend=tasks.filter(t=>t.status==='review'&&!(t.submitCount||0)).length;
-  const allPct=allT?Math.round(allDone/allT*100):0;
+  var aT=tasks.length,aD=tasks.filter(function(t){return ['completed','accepted'].includes(t.status);}).length;
+  var aRej=tasks.filter(function(t){return t.status==='rejected';}).length;
+  var aRev=tasks.filter(function(t){return t.status==='review'&&(t.submitCount||0)>0;}).length;
+  var aPend=tasks.filter(function(t){return !(t.submitCount||0);}).length;
+  var aPct=aT?Math.round(aD/aT*100):0;
+  var kT=kpiTasks.length,kD=kpiTasks.filter(function(t){return ['completed','accepted'].includes(t.status);}).length;
+  var kRej=kpiTasks.filter(function(t){return t.status==='rejected';}).length;
+  var kRev=kpiTasks.filter(function(t){return t.status==='review'&&(t.submitCount||0)>0;}).length;
+  var kPend=kpiTasks.filter(function(t){return !(t.submitCount||0);}).length;
+  var kPct=kT?Math.round(kD/kT*100):0;
+  var jT=kpiTasks.filter(function(t){return t.criteria==='جودة الخدمات';}),jD=jT.filter(function(t){return ['completed','accepted'].includes(t.status);}).length,jPct=jT.length?Math.round(jD/jT.length*100):0;
+  var iT=kpiTasks.filter(function(t){return t.criteria==='الامتثال والالتزام';}),iD=iT.filter(function(t){return ['completed','accepted'].includes(t.status);}).length,iPct=iT.length?Math.round(iD/iT.length*100):0;
 
-  // إحصائيات KPI
-  const kTotal=kpiTasks.length, kDone=kpiTasks.filter(t=>['completed','accepted'].includes(t.status)).length;
-  const kRej=kpiTasks.filter(t=>t.status==='rejected').length;
-  const kRev=kpiTasks.filter(t=>t.status==='review'&&(t.submitCount||0)>0).length;
-  const kPend=kpiTasks.filter(t=>!(t.submitCount||0)).length;
-  const kPct=kTotal?Math.round(kDone/kTotal*100):0;
+  var dS={};
+  tasks.forEach(function(t){if(!t.dept)return;if(!dS[t.dept])dS[t.dept]={total:0,done:0,rev:0,rej:0};dS[t.dept].total++;if(['completed','accepted'].includes(t.status))dS[t.dept].done++;else if(t.status==='review'&&(t.submitCount||0)>0)dS[t.dept].rev++;else if(t.status==='rejected')dS[t.dept].rej++;});
+  var kS={};
+  kpiTasks.forEach(function(t){if(!t.dept)return;if(!kS[t.dept])kS[t.dept]={total:0,done:0,rev:0,rej:0};kS[t.dept].total++;if(['completed','accepted'].includes(t.status))kS[t.dept].done++;else if(t.status==='review'&&(t.submitCount||0)>0)kS[t.dept].rev++;else if(t.status==='rejected')kS[t.dept].rej++;});
 
-  // إحصائيات الإدارات للمهام العادية
-  const deptStats={};
-  tasks.forEach(t=>{
-    if(!t.dept)return;
-    if(!deptStats[t.dept])deptStats[t.dept]={total:0,done:0,rev:0,rej:0};
-    deptStats[t.dept].total++;
-    if(t.status==='completed'||t.status==='accepted')deptStats[t.dept].done++;
-    else if(t.status==='review'&&(t.submitCount||0)>0)deptStats[t.dept].rev++;
-    else if(t.status==='rejected')deptStats[t.dept].rej++;
-  });
+  function pC(p){return p>=70?'#16a34a':p>=40?'#d97706':'#dc2626';}
+  function circ(pct,color,sz){
+    sz=sz||90;var r=36,cx=sz/2,cy=sz/2,c2=2*Math.PI*r,dash=c2*pct/100,gap=c2-dash;
+    return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 '+sz+' '+sz+'">'
+      +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#e2e8f0" stroke-width="10"/>'
+      +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="10" stroke-dasharray="'+dash+' '+gap+'" stroke-dashoffset="'+(c2*0.25)+'" stroke-linecap="round" transform="rotate(-90 '+cx+' '+cy+')"/ >'
+      +'<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" font-family="Tajawal,Arial" font-size="16" font-weight="900" fill="'+color+'">'+pct+'%</text>'
+      +'<text x="'+cx+'" y="'+(cy+12)+'" text-anchor="middle" font-family="Tajawal,Arial" font-size="9" fill="#64748b">إنجاز</text>'
+      +'</svg>';
+  }
+  function badge(s){
+    var c={review:'background:#fef9c3;color:#ca8a04',accepted:'background:#dcfce7;color:#16a34a',completed:'background:#d1fae5;color:#065f46',rejected:'background:#fee2e2;color:#dc2626'}[s]||'background:#f1f5f9;color:#64748b';
+    var lbl={review:'قيد المراجعة',accepted:'مقبولة',rejected:'مرفوضة',completed:'مكتملة'}[s]||s;
+    return '<span style="'+c+';padding:2px 9px;border-radius:12px;font-size:10px;font-weight:700">'+lbl+'</span>';
+  }
+  function dRow(dept,s){
+    var p=s.total?Math.round(s.done/s.total*100):0;
+    return '<tr><td style="text-align:right;font-weight:600;padding:7px 10px;font-size:12px">'+dept+'</td>'
+      +'<td>'+s.total+'</td><td style="color:#16a34a;font-weight:700">'+s.done+'</td>'
+      +'<td style="color:#d97706">'+s.rev+'</td><td style="color:#dc2626">'+s.rej+'</td>'
+      +'<td><div style="display:flex;align-items:center;gap:6px">'
+      +'<div style="flex:1;background:#e2e8f0;border-radius:50px;height:7px;overflow:hidden">'
+      +'<div style="background:'+pC(p)+';height:100%;width:'+p+'%;border-radius:50px"></div></div>'
+      +'<span style="font-weight:800;color:'+pC(p)+';font-size:11px;min-width:32px">'+p+'%</span></div></td></tr>';
+  }
+  function kRow(t,i){
+    var eh=t.endDate?getH(t.endDate):'—';
+    var cr=t.criteria==='جودة الخدمات'?'⭐ جودة':t.criteria==='الامتثال والالتزام'?'📋 امتثال':'—';
+    var dn=(t.dept||'').replace('إدارة ','').replace('فريق ','').substring(0,18);
+    return '<tr><td>'+(i+1)+'</td>'
+      +'<td style="text-align:right;font-size:11px">'+(t.title||'').substring(0,45)+'</td>'
+      +'<td style="text-align:right;font-size:10px">'+dn+'</td>'
+      +'<td style="font-size:10px">'+cr+'</td>'
+      +'<td style="font-size:10px">'+eh+'</td>'
+      +'<td>'+badge(t.status)+'</td></tr>';
+  }
 
-  // إحصائيات الإدارات للمؤشرات
-  const kDeptStats={};
-  kpiTasks.forEach(t=>{
-    if(!t.dept)return;
-    if(!kDeptStats[t.dept])kDeptStats[t.dept]={total:0,done:0,rev:0,rej:0};
-    kDeptStats[t.dept].total++;
-    if(['completed','accepted'].includes(t.status))kDeptStats[t.dept].done++;
-    else if(t.status==='review'&&(t.submitCount||0)>0)kDeptStats[t.dept].rev++;
-    else if(t.status==='rejected')kDeptStats[t.dept].rej++;
-  });
+  var dSRows='',kSRows='',kpiRows='';
+  Object.keys(dS).forEach(function(d){dSRows+=dRow(d,dS[d]);});
+  Object.keys(kS).forEach(function(d){kSRows+=dRow(d,kS[d]);});
+  kpiTasks.forEach(function(t,i){kpiRows+=kRow(t,i);});
 
-  const SM2={review:'قيد المراجعة',accepted:'مقبولة',rejected:'مرفوضة',completed:'مكتملة',incomplete:'غير مكتملة',pending:'مستلمة',closed:'مقفلة'};
+  var css='*{margin:0;padding:0;box-sizing:border-box}'
+    +'body{font-family:Tajawal,Arial,sans-serif;background:#f4f6fa;color:#1e293b;direction:rtl;font-size:13px}'
+    +'@media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    +'.no-print{display:none!important}'
+    +'.pg-break{page-break-before:always;padding-top:20px}'
+    +'@page{size:A4;margin:12mm}}'
+    +'.hdr{background:linear-gradient(135deg,#0a1e38,#1a3a5c);padding:24px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:4px solid #d1ae37}'
+    +'.body{padding:20px 32px}'
+    +'.sec{font-size:15px;font-weight:800;color:#0f2744;border-right:5px solid #d1ae37;padding:5px 12px;margin:22px 0 14px;background:rgba(209,174,55,.08);border-radius:0 6px 6px 0}'
+    +'.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px}'
+    +'.card{background:#fff;border-radius:10px;padding:14px 8px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08)}'
+    +'.circ-row{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin:16px 0;background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.06)}'
+    +'.ci{text-align:center}'
+    +'.ci .cl{font-size:11px;font-weight:700;color:#475569;margin-top:6px}'
+    +'.ci .cs{font-size:10px;color:#94a3b8;margin-top:2px}'
+    +'.cr2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}'
+    +'.cbox{background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}'
+    +'.ct{font-size:12px;font-weight:800;color:#0f2744;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #f1f5f9}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:12px}'
+    +'thead tr{background:#0f2744;color:#fff}'
+    +'thead th{padding:9px 10px;text-align:center;font-weight:700;font-family:Tajawal,Arial}'
+    +'tbody tr:nth-child(even){background:#f8fafc}'
+    +'tbody td{padding:7px 10px;text-align:center;border-bottom:1px solid #e2e8f0;font-family:Tajawal,Arial}'
+    +'.foot{background:#0f2744;color:rgba(255,255,255,.55);padding:12px 32px;display:flex;justify-content:space-between;font-size:11px;margin-top:24px}'
+    +'.pbt{position:fixed;bottom:20px;left:20px;background:#d1ae37;color:#0f2744;border:none;padding:13px 26px;border-radius:10px;font-family:Tajawal,Arial;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:9999}';
 
-  const html=`<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<title>تقرير منصة إتمام — ${todayH}</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Tajawal',sans-serif;background:#f0f4f8;color:#1e293b;direction:rtl;}
-@media print{
-  body{background:#fff;}
-  .no-print{display:none!important;}
-  .page-break{page-break-before:always;}
-  @page{margin:15mm;size:A4;}
-}
-/* ── HEADER ── */
-.header{background:linear-gradient(135deg,#0a1e38 0%,#1a3a5c 60%,#0f2744 100%);color:#fff;padding:28px 36px;display:flex;align-items:center;justify-content:space-between;border-bottom:4px solid #d1ae37;}
-.header-logo{display:flex;flex-direction:column;}
-.logo-name{font-size:38px;font-weight:900;color:#d1ae37;letter-spacing:2px;}
-.logo-sub{font-size:13px;color:rgba(255,255,255,.65);margin-top:3px;}
-.header-info{text-align:left;}
-.report-title{font-size:20px;font-weight:800;color:#fff;}
-.report-date{margin-top:8px;background:rgba(209,174,55,.15);border:1px solid #d1ae37;border-radius:8px;padding:6px 14px;display:inline-block;}
-.date-hijri{font-size:16px;font-weight:800;color:#d1ae37;}
-.date-miladi{font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;}
-/* ── BODY ── */
-.body{padding:24px 36px;}
-.section-title{font-size:17px;font-weight:800;color:#0f2744;border-right:5px solid #d1ae37;padding-right:12px;margin:24px 0 14px;}
-/* ── STAT CARDS ── */
-.stat-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:20px;}
-.stat-card{background:#fff;border-radius:10px;padding:14px 10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08);}
-.stat-card .val{font-size:26px;font-weight:900;}
-.stat-card .lbl{font-size:10px;color:#64748b;margin-top:4px;font-weight:700;}
-.stat-card.blue .val{color:#2563eb;} .stat-card.blue{border-top:4px solid #2563eb;}
-.stat-card.green .val{color:#16a34a;} .stat-card.green{border-top:4px solid #22c55e;}
-.stat-card.orange .val{color:#d97706;} .stat-card.orange{border-top:4px solid #f59e0b;}
-.stat-card.red .val{color:#dc2626;} .stat-card.red{border-top:4px solid #ef4444;}
-.stat-card.gray .val{color:#64748b;} .stat-card.gray{border-top:4px solid #94a3b8;}
-.stat-card.gold .val{color:#b45309;} .stat-card.gold{border-top:4px solid #d1ae37;}
-/* ── PROGRESS ── */
-.progress-wrap{background:#e2e8f0;border-radius:50px;height:14px;margin-bottom:8px;overflow:hidden;}
-.progress-bar{height:100%;border-radius:50px;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width .3s;}
-/* ── TABLE ── */
-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;}
-thead tr{background:#0f2744;color:#fff;}
-thead th{padding:9px 10px;text-align:center;font-weight:700;}
-tbody tr:nth-child(even){background:#f8fafc;}
-tbody tr:hover{background:#f0f9ff;}
-tbody td{padding:8px 10px;text-align:center;border-bottom:1px solid #e2e8f0;}
-tbody td.dept-name{text-align:right;font-weight:700;}
-.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;}
-.badge-green{background:#dcfce7;color:#16a34a;}
-.badge-yellow{background:#fef9c3;color:#ca8a04;}
-.badge-red{background:#fee2e2;color:#dc2626;}
-.badge-gray{background:#f1f5f9;color:#64748b;}
-.pct-good{color:#16a34a;font-weight:800;}
-.pct-med{color:#d97706;font-weight:800;}
-.pct-bad{color:#dc2626;font-weight:800;}
-/* ── FOOTER ── */
-.footer{background:#0f2744;color:rgba(255,255,255,.6);padding:14px 36px;display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-top:20px;}
-.footer span{color:#d1ae37;font-weight:700;}
-.print-btn{position:fixed;bottom:24px;left:24px;background:#d1ae37;color:#0f2744;border:none;padding:14px 28px;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.25);z-index:999;}
-</style>
-</head>
-<body>
-<button class="print-btn no-print" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+  var body=''
+    +'<button class="pbt no-print" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>'
+    +'<div class="hdr">'
+      +'<div><div style="font-size:34px;font-weight:900;color:#d1ae37">إتمام</div>'
+      +'<div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:3px">شركة قافلة الإتمام للحج</div></div>'
+      +'<div style="text-align:left">'
+        +'<div style="font-size:18px;font-weight:800;color:#fff">📊 تقرير الأداء الشامل</div>'
+        +'<div style="margin-top:8px"><div style="font-size:16px;font-weight:800;color:#d1ae37">'+todayH+'</div>'
+        +'<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">'+todayStr+'</div></div></div></div>'
+    +'<div class="body">'
+    +'<div class="sec">🎯 مؤشرات الإنجاز الكلية</div>'
+    +'<div class="circ-row">'
+      +'<div class="ci">'+circ(aPct,pC(aPct),100)+'<div class="cl">المهام العادية</div><div class="cs">'+aD+' من '+aT+'</div></div>'
+      +'<div class="ci">'+circ(kPct,pC(kPct),100)+'<div class="cl">مؤشرات الدليل</div><div class="cs">'+kD+' من '+kT+'</div></div>'
+      +'<div class="ci">'+circ(jPct,'#7c3aed',100)+'<div class="cl">جودة الخدمات</div><div class="cs">'+jD+' من '+jT.length+'</div></div>'
+      +'<div class="ci">'+circ(iPct,'#16a34a',100)+'<div class="cl">الامتثال والالتزام</div><div class="cs">'+iD+' من '+iT.length+'</div></div>'
+    +'</div>'
+    +'<div class="sec">📋 المهام العادية</div>'
+    +'<div class="cards">'
+      +'<div class="card" style="border-top:4px solid #2563eb"><div style="font-size:24px;font-weight:900;color:#2563eb;margin-bottom:4px">'+aT+'</div><div style="font-size:10px;color:#64748b;font-weight:700">الإجمالي</div></div>'
+      +'<div class="card" style="border-top:4px solid #22c55e"><div style="font-size:24px;font-weight:900;color:#16a34a;margin-bottom:4px">'+aD+'</div><div style="font-size:10px;color:#64748b;font-weight:700">مكتملة</div></div>'
+      +'<div class="card" style="border-top:4px solid #f59e0b"><div style="font-size:24px;font-weight:900;color:#d97706;margin-bottom:4px">'+aRev+'</div><div style="font-size:10px;color:#64748b;font-weight:700">مراجعة</div></div>'
+      +'<div class="card" style="border-top:4px solid #ef4444"><div style="font-size:24px;font-weight:900;color:#dc2626;margin-bottom:4px">'+aRej+'</div><div style="font-size:10px;color:#64748b;font-weight:700">مرفوضة</div></div>'
+      +'<div class="card" style="border-top:4px solid #94a3b8"><div style="font-size:24px;font-weight:900;color:#64748b;margin-bottom:4px">'+aPend+'</div><div style="font-size:10px;color:#64748b;font-weight:700">لم تُسلَّم</div></div>'
+      +'<div class="card" style="border-top:4px solid #d1ae37"><div style="font-size:24px;font-weight:900;color:'+pC(aPct)+';margin-bottom:4px">'+aPct+'%</div><div style="font-size:10px;color:#64748b;font-weight:700">الإنجاز</div></div>'
+    +'</div>'
+    +'<div class="cbox"><div class="ct">أداء الإدارات — المهام العادية</div>'
+    +'<table><thead><tr><th style="text-align:right">الإدارة</th><th>الإجمالي</th><th>مكتملة</th><th>مراجعة</th><th>مرفوضة</th><th style="width:160px">نسبة الإنجاز</th></tr></thead><tbody>'+dSRows+'</tbody></table></div>'
+    +'<div style="page-break-before:always;padding-top:20px"></div>'
+    +'<div class="sec">📊 مؤشرات الدليل — حج عام 1447</div>'
+    +'<div class="cards">'
+      +'<div class="card" style="border-top:4px solid #2563eb"><div style="font-size:24px;font-weight:900;color:#2563eb;margin-bottom:4px">'+kT+'</div><div style="font-size:10px;color:#64748b;font-weight:700">الإجمالي</div></div>'
+      +'<div class="card" style="border-top:4px solid #22c55e"><div style="font-size:24px;font-weight:900;color:#16a34a;margin-bottom:4px">'+kD+'</div><div style="font-size:10px;color:#64748b;font-weight:700">مكتملة</div></div>'
+      +'<div class="card" style="border-top:4px solid #f59e0b"><div style="font-size:24px;font-weight:900;color:#d97706;margin-bottom:4px">'+kRev+'</div><div style="font-size:10px;color:#64748b;font-weight:700">مراجعة</div></div>'
+      +'<div class="card" style="border-top:4px solid #ef4444"><div style="font-size:24px;font-weight:900;color:#dc2626;margin-bottom:4px">'+kRej+'</div><div style="font-size:10px;color:#64748b;font-weight:700">مرفوضة</div></div>'
+      +'<div class="card" style="border-top:4px solid #7c3aed"><div style="font-size:24px;font-weight:900;color:#7c3aed;margin-bottom:4px">'+jT.length+'</div><div style="font-size:10px;color:#64748b;font-weight:700">جودة خدمات</div></div>'
+      +'<div class="card" style="border-top:4px solid #16a34a"><div style="font-size:24px;font-weight:900;color:#16a34a;margin-bottom:4px">'+iT.length+'</div><div style="font-size:10px;color:#64748b;font-weight:700">امتثال</div></div>'
+    +'</div>'
+    +'<div class="cr2">'
+      +'<div class="cbox"><div class="ct">⭐ معيار جودة الخدمات</div>'
+        +'<div style="display:flex;align-items:center;gap:16px">'+circ(jPct,'#7c3aed',90)
+        +'<div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px"><span>الإجمالي</span><b>'+jT.length+'</b></div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:#16a34a">✓ مكتملة</span><b>'+jD+'</b></div>'
+        +'<div style="background:#e2e8f0;height:6px;border-radius:50px;overflow:hidden;margin-bottom:8px"><div style="background:#16a34a;height:100%;width:'+(jT.length?jD/jT.length*100:0)+'%;border-radius:50px"></div></div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:#ef4444">✗ مرفوضة</span><b>'+jT.filter(function(t){return t.status==='rejected';}).length+'</b></div>'
+        +'<div style="background:#e2e8f0;height:6px;border-radius:50px;overflow:hidden"><div style="background:#ef4444;height:100%;width:'+(jT.length?jT.filter(function(t){return t.status==='rejected';}).length/jT.length*100:0)+'%;border-radius:50px"></div></div>'
+        +'</div></div></div>'
+      +'<div class="cbox"><div class="ct">📋 معيار الامتثال والالتزام</div>'
+        +'<div style="display:flex;align-items:center;gap:16px">'+circ(iPct,'#16a34a',90)
+        +'<div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px"><span>الإجمالي</span><b>'+iT.length+'</b></div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:#16a34a">✓ مكتملة</span><b>'+iD+'</b></div>'
+        +'<div style="background:#e2e8f0;height:6px;border-radius:50px;overflow:hidden;margin-bottom:8px"><div style="background:#16a34a;height:100%;width:'+(iT.length?iD/iT.length*100:0)+'%;border-radius:50px"></div></div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:#ef4444">✗ مرفوضة</span><b>'+iT.filter(function(t){return t.status==='rejected';}).length+'</b></div>'
+        +'<div style="background:#e2e8f0;height:6px;border-radius:50px;overflow:hidden"><div style="background:#ef4444;height:100%;width:'+(iT.length?iT.filter(function(t){return t.status==='rejected';}).length/iT.length*100:0)+'%;border-radius:50px"></div></div>'
+        +'</div></div></div>'
+    +'</div>'
+    +'<div class="cbox" style="margin-bottom:16px"><div class="ct">أداء الإدارات — مؤشرات الدليل</div>'
+    +'<table><thead><tr><th style="text-align:right">الإدارة</th><th>الإجمالي</th><th>مكتملة</th><th>مراجعة</th><th>مرفوضة</th><th style="width:160px">نسبة الإنجاز</th></tr></thead><tbody>'+kSRows+'</tbody></table></div>'
+    +'<div style="page-break-before:always;padding-top:20px"></div>'
+    +'<div class="sec">📋 تفاصيل مهام مؤشرات الدليل</div>'
+    +'<table><thead><tr><th>#</th><th style="text-align:right;width:35%">عنوان المؤشر</th><th style="text-align:right">الإدارة</th><th>المعيار</th><th>الانتهاء</th><th>الحالة</th></tr></thead><tbody>'+kpiRows+'</tbody></table>'
+    +'</div>'
+    +'<div class="foot"><b style="color:#d1ae37">منصة إتمام</b><div>شركة قافلة الإتمام للحج</div><div>'+todayH+'</div></div>';
 
-<!-- HEADER -->
-<div class="header">
-  <div class="header-logo">
-    <div class="logo-name">إتمام</div>
-    <div class="logo-sub">شركة قافلة الإتمام للحج</div>
-  </div>
-  <div class="header-info">
-    <div class="report-title">📊 تقرير الأداء الشامل — منصة إتمام</div>
-    <div class="report-date">
-      <div class="date-hijri">${todayH}</div>
-      <div class="date-miladi">${todayM}</div>
-    </div>
-  </div>
-</div>
+  var html='<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>تقرير إتمام</title>'
+    +'<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap" rel="stylesheet">'
+    +'<style>'+css+'</style></head><body>'+body+'</body></html>';
 
-<div class="body">
-
-<!-- ══ المهام العادية ══ -->
-<div class="section-title">📋 المهام العادية — ملخص عام</div>
-<div class="stat-row">
-  <div class="stat-card blue"><div class="val">${allT}</div><div class="lbl">إجمالي المهام</div></div>
-  <div class="stat-card green"><div class="val">${allDone}</div><div class="lbl">مقبولة / مكتملة</div></div>
-  <div class="stat-card orange"><div class="val">${allRev}</div><div class="lbl">قيد المراجعة</div></div>
-  <div class="stat-card red"><div class="val">${allRej}</div><div class="lbl">مرفوضة</div></div>
-  <div class="stat-card gray"><div class="val">${allPend}</div><div class="lbl">لم تُسلَّم</div></div>
-  <div class="stat-card gold"><div class="val">${allPct}%</div><div class="lbl">نسبة الإنجاز</div></div>
-</div>
-<div class="progress-wrap"><div class="progress-bar" style="width:${allPct}%"></div></div>
-<div style="font-size:11px;color:#64748b;margin-bottom:16px">نسبة الإنجاز الكلية للمهام العادية: <b>${allPct}%</b></div>
-
-<!-- جدول الإدارات - مهام عادية -->
-<table>
-  <thead><tr><th>الإدارة</th><th>الإجمالي</th><th>مكتملة</th><th>مراجعة</th><th>مرفوضة</th><th>نسبة الإنجاز</th></tr></thead>
-  <tbody>
-    ${Object.entries(deptStats).map(([dept,s])=>{
-      const pct=s.total?Math.round(s.done/s.total*100):0;
-      return `<tr><td class="dept-name">${dept}</td><td>${s.total}</td><td>${s.done}</td><td>${s.rev}</td><td>${s.rej}</td><td class="${pct>=70?'pct-good':pct>=40?'pct-med':'pct-bad'}">${pct}%</td></tr>`;
-    }).join('')}
-  </tbody>
-</table>
-
-<!-- ══ مؤشرات الدليل ══ -->
-<div class="page-break"></div>
-<div class="section-title">📊 مؤشرات الدليل — حج 1447</div>
-<div class="stat-row">
-  <div class="stat-card blue"><div class="val">${kTotal}</div><div class="lbl">إجمالي المؤشرات</div></div>
-  <div class="stat-card green"><div class="val">${kDone}</div><div class="lbl">مقبولة / مكتملة</div></div>
-  <div class="stat-card orange"><div class="val">${kRev}</div><div class="lbl">قيد المراجعة</div></div>
-  <div class="stat-card red"><div class="val">${kRej}</div><div class="lbl">مرفوضة</div></div>
-  <div class="stat-card gray"><div class="val">${kPend}</div><div class="lbl">لم تُسلَّم</div></div>
-  <div class="stat-card gold"><div class="val">${kPct}%</div><div class="lbl">نسبة الإنجاز</div></div>
-</div>
-<div class="progress-wrap"><div class="progress-bar" style="width:${kPct}%"></div></div>
-<div style="font-size:11px;color:#64748b;margin-bottom:16px">نسبة الإنجاز الكلية للمؤشرات: <b>${kPct}%</b></div>
-
-<!-- جدول الإدارات - مؤشرات -->
-<table>
-  <thead><tr><th>الإدارة</th><th>الإجمالي</th><th>مكتملة</th><th>مراجعة</th><th>مرفوضة</th><th>نسبة الإنجاز</th></tr></thead>
-  <tbody>
-    ${Object.entries(kDeptStats).map(([dept,s])=>{
-      const pct=s.total?Math.round(s.done/s.total*100):0;
-      return `<tr><td class="dept-name">${dept}</td><td>${s.total}</td><td>${s.done}</td><td>${s.rev}</td><td>${s.rej}</td><td class="${pct>=70?'pct-good':pct>=40?'pct-med':'pct-bad'}">${pct}%</td></tr>`;
-    }).join('')}
-  </tbody>
-</table>
-
-<!-- ══ تفاصيل مهام المؤشرات ══ -->
-<div class="page-break"></div>
-<div class="section-title">📋 تفاصيل مهام المؤشرات</div>
-<table>
-  <thead><tr><th>#</th><th>عنوان المؤشر</th><th>الإدارة</th><th>المعيار</th><th>تاريخ الانتهاء</th><th>الحالة</th></tr></thead>
-  <tbody>
-    ${kpiTasks.map((t,i)=>{
-      const st={review:'badge-yellow',accepted:'badge-green',completed:'badge-green',rejected:'badge-red'}[t.status]||'badge-gray';
-      const eh=t.endDate?getH(t.endDate):'—';
-      return `<tr><td>${i+1}</td><td style="text-align:right">${t.title||'—'}</td><td>${(t.dept||'').replace('إدارة ','')}</td><td style="font-size:10px">${t.criteria||'—'}</td><td style="font-size:10px">${eh}</td><td><span class="badge ${st}">${SM2[t.status]||t.status}</span></td></tr>`;
-    }).join('')}
-  </tbody>
-</table>
-
-</div><!-- end body -->
-
-<!-- FOOTER -->
-<div class="footer">
-  <span>منصة إتمام</span>
-  <div>شركة قافلة الإتمام للحج — جميع الحقوق محفوظة © ${todayH}</div>
-  <div>تاريخ التقرير: ${todayM}</div>
-</div>
-</body></html>`;
-
-  const w=window.open('','_blank');
+  var w=window.open('','_blank','width=960,height=750');
+  if(!w){toast('يرجى السماح بالنوافذ المنبثقة','err');btn.innerHTML='<i class="fas fa-file-download"></i> تحميل تقرير المؤشرات PDF';btn.disabled=false;return;}
+  w.document.open();
   w.document.write(html);
   w.document.close();
   btn.innerHTML='<i class="fas fa-file-download"></i> تحميل تقرير المؤشرات PDF';
   btn.disabled=false;
 }
+
+
 let akdCharts={};
 
 function setKpiDashFilter(f,btn){
