@@ -3223,19 +3223,29 @@ function daysUntil(dateStr){
 function toHijri(dateStr){
   if(!dateStr||dateStr==='') return '';
   try{
-    const d=new Date(dateStr);
+    const d=new Date(dateStr+'T00:00:00');
     if(isNaN(d)) return dateStr;
-    // مرجع: 1 محرم 1447 = 28 يوليو 2025
-    const ref=new Date('2025-07-28');
-    const delta=Math.round((d-ref)/(1000*60*60*24));
-    let hYear=1447+Math.floor(delta/354.367);
-    let rem=delta-Math.floor(Math.floor(delta/354.367)*354.367);
-    if(rem<0){hYear--;rem+=354;}
-    const mDays=[30,29,30,29,30,29,30,29,30,29,30,29];
-    const mNames=['محرم','صفر','ربيع الأول','ربيع الثاني','جمادى الأولى','جمادى الثانية','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
-    let hMonth=1,hDay=rem+1;
-    for(let i=0;i<12;i++){if(rem<mDays[i]){hMonth=i+1;hDay=rem+1;break;}rem-=mDays[i];}
-    return `${Math.round(hDay)} ${mNames[hMonth-1]} ${hYear}هـ`;
+    // جدول دقيق لبدايات أشهر 1447هـ (تقويم أم القرى)
+    const MONTHS=[
+      {y:1447,m:1,  d:'2025-07-27'},{y:1447,m:2,  d:'2025-08-26'},
+      {y:1447,m:3,  d:'2025-09-24'},{y:1447,m:4,  d:'2025-10-23'},
+      {y:1447,m:5,  d:'2025-11-22'},{y:1447,m:6,  d:'2025-12-21'},
+      {y:1447,m:7,  d:'2026-01-20'},{y:1447,m:8,  d:'2026-02-18'},
+      {y:1447,m:9,  d:'2026-03-01'},{y:1447,m:10, d:'2026-03-31'},
+      {y:1447,m:11, d:'2026-04-29'},{y:1447,m:12, d:'2026-05-29'},
+      {y:1448,m:1,  d:'2026-06-27'},
+    ];
+    const NAMES=['محرم','صفر','ربيع الأول','ربيع الثاني','جمادى الأولى',
+                 'جمادى الثانية','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+    for(let i=0;i<MONTHS.length-1;i++){
+      const s=new Date(MONTHS[i].d+'T00:00:00');
+      const ns=new Date(MONTHS[i+1].d+'T00:00:00');
+      if(d>=s&&d<ns){
+        const day=Math.round((d-s)/(1000*60*60*24))+1;
+        return `${day} ${NAMES[MONTHS[i].m-1]} ${MONTHS[i].y}هـ`;
+      }
+    }
+    return dateStr;
   }catch(e){return dateStr;}
 }
 
