@@ -814,63 +814,68 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
         </div>
       </div>
 
-      <!-- DEPT DASHBOARD -->
+      <!-- DEPT DASHBOARD — مؤشرات الدليل فقط -->
       <div class="pg" id="pg-dept-dashboard">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
           <div>
-            <div style="font-size:20px;font-weight:800;color:var(--primary)" id="deptDashTitle">داشبورد إدارتي</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:3px" id="deptDashSub">نظرة شاملة على أداء إدارتك</div>
-          </div>
-          <div style="display:flex;gap:8px">
-            <button class="ftab on" id="ddFilterAll" onclick="setDeptDashFilter('all',this)">الكل</button>
-            <button class="ftab" onclick="setDeptDashFilter('kpi',this)">مؤشرات الدليل</button>
-            <button class="ftab" onclick="setDeptDashFilter('tasks',this)">المهام العادية</button>
+            <div style="font-size:20px;font-weight:800;color:var(--primary)" id="deptDashTitle">لوحة مؤشرات الدليل</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px" id="deptDashSub">أداء إدارتك في مهام مؤشرات الدليل</div>
           </div>
         </div>
-        <!-- بطاقات الملخص -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px" id="ddStatCards"></div>
-        <!-- شريط الصحة العامة -->
-        <div id="ddHealthBar" style="background:linear-gradient(135deg,var(--primary),var(--primary2));border-radius:var(--r);padding:18px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
-          <div style="display:flex;gap:28px">
-            <div><div style="font-size:26px;font-weight:800;color:#1db954" id="ddPercent">0%</div><div style="font-size:10px;color:rgba(255,255,255,.5)">نسبة الإنجاز</div></div>
-            <div><div style="font-size:26px;font-weight:800;color:#ef4444" id="ddPending">0</div><div style="font-size:10px;color:rgba(255,255,255,.5)">قيد التسليم</div></div>
-            <div><div style="font-size:26px;font-weight:800;color:#f59e0b" id="ddReview">0</div><div style="font-size:10px;color:rgba(255,255,255,.5)">قيد المراجعة</div></div>
+
+        <!-- بطاقات ملخص -->
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px" id="ddStatCards"></div>
+
+        <!-- شريط الصحة -->
+        <div style="background:linear-gradient(135deg,var(--primary),var(--primary2));border-radius:var(--r);padding:20px 26px;margin-bottom:20px;display:flex;align-items:center;gap:32px">
+          <div style="display:flex;gap:32px;flex:1">
+            <div><div style="font-size:28px;font-weight:800;color:#1db954" id="ddPercent">0%</div><div style="font-size:10.5px;color:rgba(255,255,255,.5)">نسبة الإنجاز</div></div>
+            <div><div style="font-size:28px;font-weight:800;color:#ef4444" id="ddPending">0</div><div style="font-size:10.5px;color:rgba(255,255,255,.5)">لم تُسلَّم</div></div>
+            <div><div style="font-size:28px;font-weight:800;color:#f59e0b" id="ddReview">0</div><div style="font-size:10.5px;color:rgba(255,255,255,.5)">قيد المراجعة</div></div>
+            <div><div style="font-size:28px;font-weight:800;color:#ef4444" id="ddRej">0</div><div style="font-size:10.5px;color:rgba(255,255,255,.5)">مرفوضة</div></div>
           </div>
-          <div style="text-align:left">
-            <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:3px">مؤشر الصحة</div>
+          <div style="text-align:right">
+            <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:3px">مؤشر الصحة</div>
             <div style="font-size:16px;font-weight:800;color:#fff" id="ddHealthLabel">—</div>
           </div>
-          <div style="position:relative;width:72px;height:72px">
-            <canvas id="ddHealthChart" width="72" height="72"></canvas>
+          <div style="position:relative;width:78px;height:78px">
+            <canvas id="ddHealthChart" width="78" height="78"></canvas>
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
-              <div style="font-size:16px;font-weight:800;color:#fff" id="ddScore">0</div>
+              <div style="font-size:17px;font-weight:800;color:#fff" id="ddScore">0</div>
               <div style="font-size:9px;color:rgba(255,255,255,.4)">/100</div>
             </div>
           </div>
         </div>
-        <!-- مهام المؤشرات + المهام العادية -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+
+        <!-- صف رئيسي -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <!-- شريط التقدم التفصيلي -->
           <div class="dcard">
-            <div class="dcard-title"><i class="fas fa-chart-line" style="color:var(--blue)"></i> مهام مؤشرات الدليل</div>
+            <div class="dcard-title"><i class="fas fa-tasks" style="color:var(--blue)"></i> تفصيل حالات مهام المؤشرات</div>
             <div id="ddKpiBars"></div>
           </div>
+          <!-- مخطط دائري -->
           <div class="dcard">
-            <div class="dcard-title"><i class="fas fa-tasks" style="color:var(--accent)"></i> المهام العادية</div>
-            <div id="ddTaskBars"></div>
-          </div>
-        </div>
-        <!-- توزيع الحالات -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-          <div class="dcard">
-            <div class="dcard-title"><i class="fas fa-chart-pie"></i> توزيع حالات المؤشرات</div>
-            <div style="height:170px;position:relative"><canvas id="ddKpiChart"></canvas></div>
-            <div style="display:flex;gap:10px;justify-content:center;margin-top:8px;font-size:11px;flex-wrap:wrap">
-              <span style="color:#16a34a">● مقبولة</span><span style="color:#f59e0b">● مراجعة</span><span style="color:#ef4444">● مرفوضة</span><span style="color:#94a3b8">● لم تُسلَّم</span>
+            <div class="dcard-title"><i class="fas fa-chart-pie"></i> توزيع الحالات</div>
+            <div style="height:180px;position:relative"><canvas id="ddKpiChart"></canvas></div>
+            <div style="display:flex;gap:12px;justify-content:center;margin-top:10px;font-size:11px;flex-wrap:wrap">
+              <span style="color:#16a34a">● مقبولة</span>
+              <span style="color:#f59e0b">● قيد المراجعة</span>
+              <span style="color:#ef4444">● مرفوضة</span>
+              <span style="color:#94a3b8">● لم تُسلَّم</span>
             </div>
           </div>
+        </div>
+
+        <!-- آخر المهام + شريط الأولويات -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div class="dcard">
-            <div class="dcard-title"><i class="fas fa-list-alt"></i> آخر مهام المؤشرات</div>
-            <div id="ddRecentKpi" style="max-height:200px;overflow-y:auto"></div>
+            <div class="dcard-title"><i class="fas fa-history" style="color:var(--accent)"></i> آخر مهام المؤشرات</div>
+            <div id="ddRecentKpi"></div>
+          </div>
+          <div class="dcard">
+            <div class="dcard-title"><i class="fas fa-exclamation-triangle" style="color:var(--warn)"></i> المهام التي تحتاج انتباهك</div>
+            <div id="ddUrgentKpi"></div>
           </div>
         </div>
       </div>
@@ -2654,123 +2659,117 @@ function renderDashCharts(){
 }
 
 // ══════════════════════════════════════════════
-// DEPT DASHBOARD
+// DEPT DASHBOARD — مؤشرات الدليل فقط
 // ══════════════════════════════════════════════
-let ddFilter='all';
 let ddChartInst={};
-
-function setDeptDashFilter(f,btn){
-  ddFilter=f;
-  document.querySelectorAll('#pg-dept-dashboard .ftab').forEach(b=>b.classList.remove('on'));
-  if(btn)btn.classList.add('on');
-  renderDeptDashboard();
-}
 
 function renderDeptDashboard(){
   const dept=currentUser?.dept;
-  document.getElementById('deptDashTitle').textContent='داشبورد — '+dept;
-  document.getElementById('deptDashSub').textContent='نظرة شاملة على أداء '+dept;
+  document.getElementById('deptDashTitle').textContent='لوحة مؤشرات الدليل — '+dept.replace('إدارة ','');
+  document.getElementById('deptDashSub').textContent='أداء إدارتك في مهام مؤشرات الدليل';
 
-  const kAll=kpiTasks.filter(t=>t.dept===dept);
-  const tAll=tasks.filter(t=>t.dept===dept);
-
-  // حسب الفلتر
-  const kList=ddFilter==='tasks'?[]:kAll;
-  const tList=ddFilter==='kpi'?[]:tAll;
-
+  const kList=kpiTasks.filter(t=>t.dept===dept);
   const kDone=kList.filter(t=>['completed','accepted'].includes(t.status)).length;
   const kRej=kList.filter(t=>t.status==='rejected').length;
   const kRev=kList.filter(t=>t.status==='review'&&(t.submitCount||0)>0).length;
   const kPending=kList.filter(t=>t.status==='review'&&(t.submitCount||0)===0).length;
-
-  const tDone=tList.filter(t=>['completed','accepted'].includes(t.status)).length;
-  const tRej=tList.filter(t=>t.status==='rejected').length;
-  const tRev=tList.filter(t=>t.status==='review').length;
-
-  const total=kList.length+tList.length;
-  const done=kDone+tDone;
-  const pct=total?Math.round(done/total*100):0;
-  const score=Math.max(0,pct-Math.floor((kRej+tRej)/Math.max(total,1)*20));
+  const kSupport=kList.filter(t=>t.needSupport).length;
+  const total=kList.length;
+  const pct=total?Math.round(kDone/total*100):0;
+  const score=Math.max(0,pct-Math.floor(kRej/Math.max(total,1)*20));
 
   // بطاقات ملخص
+  const sStyle2={accepted:'ic-g',completed:'ic-g',review:'ic-y',rejected:'ic-r'};
   document.getElementById('ddStatCards').innerHTML=
-    '<div class="sc"><div class="sc-ico ic-p"><i class="fas fa-bullseye"></i></div><div><div class="sc-val">'+kList.length+'</div><div class="sc-lbl">مهام المؤشرات</div></div></div>'+
-    '<div class="sc"><div class="sc-ico ic-g"><i class="fas fa-check-circle"></i></div><div><div class="sc-val" style="color:#16a34a">'+kDone+'</div><div class="sc-lbl">منجزة/مقبولة</div></div></div>'+
-    '<div class="sc"><div class="sc-ico ic-y"><i class="fas fa-clock"></i></div><div><div class="sc-val" style="color:#f59e0b">'+(kRev+kPending)+'</div><div class="sc-lbl">قيد التسليم/مراجعة</div></div></div>'+
-    '<div class="sc"><div class="sc-ico ic-r"><i class="fas fa-times-circle"></i></div><div><div class="sc-val" style="color:#ef4444">'+kRej+'</div><div class="sc-lbl">مرفوضة</div></div></div>';
+    '<div class="sc"><div class="sc-ico ic-p"><i class="fas fa-chart-line"></i></div><div><div class="sc-val">'+total+'</div><div class="sc-lbl">إجمالي المؤشرات</div></div></div>'+
+    '<div class="sc"><div class="sc-ico ic-g"><i class="fas fa-check-circle"></i></div><div><div class="sc-val" style="color:#16a34a">'+kDone+'</div><div class="sc-lbl">مقبولة/مكتملة</div></div></div>'+
+    '<div class="sc"><div class="sc-ico ic-y"><i class="fas fa-paper-plane"></i></div><div><div class="sc-val" style="color:#f59e0b">'+kRev+'</div><div class="sc-lbl">قيد المراجعة</div></div></div>'+
+    '<div class="sc"><div class="sc-ico ic-r"><i class="fas fa-times-circle"></i></div><div><div class="sc-val" style="color:#ef4444">'+kRej+'</div><div class="sc-lbl">مرفوضة</div></div></div>'+
+    '<div class="sc" style="border-right:3px solid #d97706"><div class="sc-ico" style="background:#fffbeb;color:#d97706"><i class="fas fa-hourglass-half"></i></div><div><div class="sc-val" style="color:#d97706">'+kPending+'</div><div class="sc-lbl">لم تُسلَّم</div></div></div>';
 
-  // شريط الصحة
+  // قيم الصحة
   document.getElementById('ddPercent').textContent=pct+'%';
   document.getElementById('ddPending').textContent=kPending;
   document.getElementById('ddReview').textContent=kRev;
+  document.getElementById('ddRej').textContent=kRej;
   document.getElementById('ddScore').textContent=score;
-  document.getElementById('ddHealthLabel').textContent=score>=70?'🟢 ممتاز':score>=40?'🟡 متوسط':'🔴 يحتاج تحسين';
+  document.getElementById('ddHealthLabel').textContent=score>=70?'🟢 أداء ممتاز':score>=40?'🟡 أداء متوسط':'🔴 يحتاج تحسين';
 
   // دائري صحة
   const hCtx=document.getElementById('ddHealthChart');
   if(hCtx){
-    if(ddChartInst['health'])ddChartInst['health'].destroy();
-    ddChartInst['health']=new Chart(hCtx,{type:'doughnut',data:{datasets:[{data:[score,100-score],backgroundColor:[score>=70?'#1db954':score>=40?'#f59e0b':'#ef4444','rgba(255,255,255,.1)'],borderWidth:0}]},options:{cutout:'75%',plugins:{legend:{display:false},tooltip:{enabled:false}},responsive:false}});
+    if(ddChartInst.health)ddChartInst.health.destroy();
+    ddChartInst.health=new Chart(hCtx,{type:'doughnut',data:{datasets:[{data:[score,100-score],backgroundColor:[score>=70?'#1db954':score>=40?'#f59e0b':'#ef4444','rgba(255,255,255,.12)'],borderWidth:0}]},options:{cutout:'75%',plugins:{legend:{display:false},tooltip:{enabled:false}},responsive:false}});
   }
 
-  // أشرطة مهام المؤشرات
+  // أشرطة تفصيلية
   const kBars=document.getElementById('ddKpiBars');
-  if(!kList.length){kBars.innerHTML='<div style="font-size:12px;color:var(--muted);padding:10px 0;text-align:center">لا توجد مهام مؤشرات لإدارتك</div>';}
-  else{
-    const kPct=kList.length?Math.round(kDone/kList.length*100):0;
-    const kCls=kPct>=70?'green':kPct>=40?'yellow':'red';
-    kBars.innerHTML='<div class="ach-item">'+
-      '<div class="ach-hdr"><span class="ach-name">نسبة الإنجاز</span><span class="ach-meta">✓'+kDone+' من '+kList.length+'</span></div>'+
-      '<div class="ach-bar-wrap"><div class="ach-bar '+kCls+'" style="width:'+kPct+'%">'+kPct+'%</div></div></div>'+
-      '<div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">'+
-      '<div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:#f0fdf4;border-radius:7px"><span>مقبولة/مكتملة</span><b style="color:#16a34a">'+kDone+'</b></div>'+
-      '<div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:#fffbeb;border-radius:7px"><span>قيد المراجعة</span><b style="color:#f59e0b">'+kRev+'</b></div>'+
-      '<div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:#fff7ed;border-radius:7px"><span>لم تُسلَّم بعد</span><b style="color:#ea580c">'+kPending+'</b></div>'+
-      '<div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:#fef2f2;border-radius:7px"><span>مرفوضة</span><b style="color:#dc2626">'+kRej+'</b></div>'+
-      (kList.filter(t=>t.needSupport).length?'<div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:#fef3c7;border-radius:7px"><span>🆘 تحتاج دعم</span><b style="color:#d97706">'+kList.filter(t=>t.needSupport).length+'</b></div>':'')+
+  if(!total){
+    kBars.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)"><i class="fas fa-chart-line" style="font-size:32px;opacity:.2;display:block;margin-bottom:10px"></i>لا توجد مهام مؤشرات لإدارتك بعد</div>';
+  } else {
+    const barCls=pct>=70?'green':pct>=40?'yellow':'red';
+    const rows=[
+      {lbl:'✅ مقبولة / مكتملة',val:kDone,bg:'#f0fdf4',col:'#16a34a'},
+      {lbl:'📤 قيد المراجعة',val:kRev,bg:'#fffbeb',col:'#f59e0b'},
+      {lbl:'⏳ لم تُسلَّم بعد',val:kPending,bg:'#fff7ed',col:'#ea580c'},
+      {lbl:'❌ مرفوضة',val:kRej,bg:'#fef2f2',col:'#dc2626'},
+      {lbl:'🆘 تحتاج دعم',val:kSupport,bg:'#fef3c7',col:'#d97706'},
+    ];
+    kBars.innerHTML=
+      '<div class="ach-item" style="margin-bottom:16px">'+
+        '<div class="ach-hdr"><span class="ach-name">نسبة الإنجاز الكلية</span><span class="ach-meta">'+kDone+' من '+total+' مهمة</span></div>'+
+        '<div class="ach-bar-wrap"><div class="ach-bar '+barCls+'" style="width:'+pct+'%">'+pct+'%</div></div>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:7px">'+
+      rows.map(r=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 13px;background:'+r.bg+';border-radius:8px">'+
+        '<span style="font-size:12.5px">'+r.lbl+'</span>'+
+        '<span style="font-size:15px;font-weight:800;color:'+r.col+'">'+r.val+'</span>'+
+      '</div>').join('')+
       '</div>';
   }
 
-  // أشرطة المهام العادية
-  const tBars=document.getElementById('ddTaskBars');
-  if(!tList.length){tBars.innerHTML='<div style="font-size:12px;color:var(--muted);padding:10px 0;text-align:center">لا توجد مهام عادية</div>';}
-  else{
-    const tPct=tList.length?Math.round(tDone/tList.length*100):0;
-    const tCls=tPct>=70?'green':tPct>=40?'yellow':'red';
-    tBars.innerHTML='<div class="ach-item">'+
-      '<div class="ach-hdr"><span class="ach-name">نسبة الإنجاز</span><span class="ach-meta">✓'+tDone+' من '+tList.length+'</span></div>'+
-      '<div class="ach-bar-wrap"><div class="ach-bar '+tCls+'" style="width:'+tPct+'%">'+tPct+'%</div></div></div>'+
-      '<div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">'+
-      '<div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:#f0fdf4;border-radius:7px"><span>مقبولة/مكتملة</span><b style="color:#16a34a">'+tDone+'</b></div>'+
-      '<div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:#eff6ff;border-radius:7px"><span>قيد المراجعة</span><b style="color:#2563eb">'+tRev+'</b></div>'+
-      '<div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:#fef2f2;border-radius:7px"><span>مرفوضة</span><b style="color:#dc2626">'+tRej+'</b></div>'+
-      '<div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:#fffbeb;border-radius:7px"><span>تحتاج دعم</span><b style="color:#d97706">'+tList.filter(t=>t.needSupport).length+'</b></div>'+
-      '</div>';
-  }
-
-  // دائري مهام المؤشرات
+  // مخطط دائري
   const kCtx=document.getElementById('ddKpiChart');
   if(kCtx){
-    if(ddChartInst['kpi'])ddChartInst['kpi'].destroy();
-    ddChartInst['kpi']=new Chart(kCtx,{type:'doughnut',
+    if(ddChartInst.kpi)ddChartInst.kpi.destroy();
+    ddChartInst.kpi=new Chart(kCtx,{type:'doughnut',
       data:{datasets:[{data:[kDone,kRev,kRej,kPending],backgroundColor:['#22c55e','#f59e0b','#ef4444','#94a3b8'],borderWidth:0}]},
       options:{cutout:'60%',plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:false}});
   }
 
-  // آخر مهام المؤشرات
-  const recent=kAll.slice(0,5);
+  // آخر المهام
+  const sStyle={review:'background:#fef9c3;color:#ca8a04',accepted:'background:#dcfce7;color:#16a34a',completed:'background:#d1fae5;color:#065f46',rejected:'background:#fee2e2;color:#dc2626',incomplete:'background:#fff7ed;color:#ea580c'};
   const recEl=document.getElementById('ddRecentKpi');
-  if(!recent.length){recEl.innerHTML='<div style="font-size:12px;color:var(--muted);padding:10px 0;text-align:center">لا توجد مهام بعد</div>';}
-  else{
-    const sStyle={review:'background:#fef9c3;color:#ca8a04',accepted:'background:#dcfce7;color:#16a34a',completed:'background:#d1fae5;color:#065f46',rejected:'background:#fee2e2;color:#dc2626',incomplete:'background:#fff7ed;color:#ea580c'};
-    recEl.innerHTML=recent.map(t=>
-      '<div style="padding:9px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px">'+
-      '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+t.title+'</div>'+
-      '<div style="font-size:10.5px;color:var(--muted)">'+t.indicator+'</div></div>'+
-      '<span style="display:inline-flex;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;'+(sStyle[t.status]||'background:#f1f5f9;color:#64748b')+'">'+SM[t.status]+'</span>'+
+  const recent=kList.slice(0,6);
+  recEl.innerHTML=!recent.length?'<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">لا توجد مهام</div>':
+    recent.map(t=>
+      '<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+t.title+'</div>'+
+        '<div style="font-size:10.5px;color:var(--blue);margin-top:2px"><i class="fas fa-chart-line" style="margin-left:3px"></i>'+t.indicator+'</div>'+
+      '</div>'+
+      '<span style="display:inline-flex;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;flex-shrink:0;'+(sStyle[t.status]||'background:#f1f5f9;color:#64748b')+'">'+SM[t.status]+'</span>'+
       '</div>'
     ).join('');
-  }
+
+  // المهام التي تحتاج انتباهاً (مرفوضة أو لم تُسلَّم مستعجلة)
+  const urgEl=document.getElementById('ddUrgentKpi');
+  const urgent=kList.filter(t=>t.status==='rejected'||(t.status==='review'&&t.priority==='urgent'&&(t.submitCount||0)===0)||(t.needSupport));
+  urgEl.innerHTML=!urgent.length?
+    '<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px"><i class="fas fa-check-circle" style="color:#16a34a;font-size:28px;display:block;margin-bottom:8px"></i>لا توجد مهام تحتاج انتباهاً</div>':
+    urgent.slice(0,5).map(t=>{
+      const tag=t.status==='rejected'?{bg:'#fef2f2',col:'#dc2626',icon:'times-circle',lbl:'مرفوضة'}:
+                t.needSupport?{bg:'#fef3c7',col:'#d97706',icon:'hands-helping',lbl:'تحتاج دعم'}:
+                {bg:'#fff7ed',col:'#ea580c',icon:'exclamation-circle',lbl:'مستعجلة'};
+      return '<div style="padding:10px 12px;margin-bottom:7px;background:'+tag.bg+';border-radius:8px;display:flex;align-items:center;gap:9px">'+
+        '<i class="fas fa-'+tag.icon+'" style="color:'+tag.col+';font-size:15px;flex-shrink:0"></i>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+t.title+'</div>'+
+          '<div style="font-size:10.5px;color:'+tag.col+'">'+tag.lbl+'</div>'+
+        '</div>'+
+        '<button class="cabt" style="font-size:10px;padding:3px 8px;flex-shrink:0" onclick="viewKpiTask(''+t.id+'')">عرض</button>'+
+      '</div>';
+    }).join('');
 }
 
 // ══════════════════════════════════════════════
