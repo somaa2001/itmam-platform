@@ -1610,6 +1610,7 @@ function navigate(pg){
   const t=pg==='dept-tasks'?'departments':pg;
   const nav=document.querySelector('.sb-item[data-pg="'+t+'"]');
   if(nav)nav.classList.add('on');
+  if(pg==='departments') renderDepts();
   if(pg==='dept-tasks') renderDeptCards('all');
   if(pg==='tasks') renderAllCards('all');
   if(pg==='my-tasks') renderMyTasks('all');
