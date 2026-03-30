@@ -1336,7 +1336,7 @@ async function login(){
     document.getElementById('sbName').textContent=currentUser.name.split(' ').slice(0,2).join(' ');
     document.getElementById('sbRole').textContent=currentUser.role==='admin'?'مسؤول النظام':'مستخدم - '+currentUser.dept;
     buildSidebar(); fillSelects();
-    setTimeout(()=>{initCharts();navigate(currentUser.role==='admin'?'dashboard':'my-tasks');},100);
+    setTimeout(()=>{initCharts();navigate(currentUser.role==='admin'?'dashboard':'my-tasks');updateSideBadges();},100);
     
   } catch(e){
     hideLoading();toast('خطأ في الاتصال بقاعدة البيانات','err');console.error(e);
@@ -1430,8 +1430,8 @@ function navigate(pg){
   if(pg==='dashboard'||pg==='kpi') setTimeout(()=>{renderDashCharts();updateAchBars();updateAnnStats();},80);
   if(pg==='announcements') renderAnn();
   if(pg==='chat') renderChat();
-  if(pg==='kpi-tasks'){loadKpiTasks().then(()=>renderKpiTasks());}
-  if(pg==='my-kpi'){loadKpiTasks().then(()=>renderMyKpi());}
+  if(pg==='kpi-tasks'){loadKpiTasks().then(()=>{renderKpiTasks();updateSideBadges();});}
+  if(pg==='my-kpi'){loadKpiTasks().then(()=>{renderMyKpi();updateSideBadges();});}
   if(pg==='complaints'){fillComplaintDeptSelect();renderComplaints();}
   if(pg==='users') renderUsers();
 }
@@ -2339,21 +2339,33 @@ function editKpiTask(id){
 // ══════════════════════════════════════════════
 function renderMyKpi(){
   const dept=currentUser.dept;
+  // مهام عادية
   const dt=tasks.filter(t=>t.dept===dept);
   const total=dt.length,done=dt.filter(t=>['completed','accepted'].includes(t.status)).length;
   const rej=dt.filter(t=>t.status==='rejected').length,rev=dt.filter(t=>t.status==='review').length;
   const pct=total?Math.round(done/total*100):0;
   const barCls=pct>=70?'green':pct>=40?'yellow':'red';
+  // مهام المؤشرات
+  const kdt=kpiTasks.filter(t=>t.dept===dept);
+  const kTotal=kdt.length,kDone=kdt.filter(t=>['completed','accepted'].includes(t.status)).length;
+  const kPct=kTotal?Math.round(kDone/kTotal*100):0;
+  const kBarCls=kPct>=70?'green':kPct>=40?'yellow':'red';
   document.getElementById('deptKpiTitle').textContent='نسب الإنجاز - '+dept;
   document.getElementById('deptKpiBars').innerHTML=
-    '<div class="ach-item"><div class="ach-hdr"><span class="ach-name">'+dept.replace('إدارة ','').substring(0,15)+'</span><span class="ach-meta">✓'+done+' X'+rej+' '+total+' مهمة</span></div>'+
-    '<div class="ach-bar-wrap"><div class="ach-bar '+barCls+'" style="width:'+pct+'%">'+pct+'%</div></div></div>';
+    '<div class="ach-item"><div class="ach-hdr"><span class="ach-name" style="font-size:12px">📋 المهام العادية</span><span class="ach-meta">✓'+done+' X'+rej+' '+total+' مهمة</span></div>'+
+    '<div class="ach-bar-wrap"><div class="ach-bar '+barCls+'" style="width:'+pct+'%">'+pct+'%</div></div></div>'+
+    (kTotal?'<div class="ach-item"><div class="ach-hdr"><span class="ach-name" style="font-size:12px">📊 مهام المؤشرات</span><span class="ach-meta">✓'+kDone+' '+kTotal+' مهمة</span></div>'+
+    '<div class="ach-bar-wrap"><div class="ach-bar '+kBarCls+'" style="width:'+kPct+'%">'+kPct+'%</div></div></div>':'<div style="font-size:12px;color:var(--muted);padding:8px 0">لا توجد مهام مؤشرات لإدارتك بعد</div>');
   document.getElementById('myDeptSummary').innerHTML=
-    '<div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">'+
-    '<div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f0fdf4;border-radius:8px"><span style="font-size:13px">مهام مكتملة/مقبولة</span><b style="color:#16a34a">'+done+'</b></div>'+
-    '<div style="display:flex;justify-content:space-between;padding:10px 14px;background:#fef2f2;border-radius:8px"><span style="font-size:13px">مهام مرفوضة</span><b style="color:#dc2626">'+rej+'</b></div>'+
-    '<div style="display:flex;justify-content:space-between;padding:10px 14px;background:#eff6ff;border-radius:8px"><span style="font-size:13px">قيد المراجعة</span><b style="color:#2563eb">'+rev+'</b></div>'+
-    '<div style="display:flex;justify-content:space-between;padding:10px 14px;background:#fffbeb;border-radius:8px"><span style="font-size:13px">تحتاج دعم</span><b style="color:#d97706">'+dt.filter(t=>t.needSupport).length+'</b></div>'+
+    '<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">'+
+    '<div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:4px">📋 المهام العادية</div>'+
+    '<div style="display:flex;justify-content:space-between;padding:9px 13px;background:#f0fdf4;border-radius:8px"><span style="font-size:12px">مكتملة/مقبولة</span><b style="color:#16a34a">'+done+'</b></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:9px 13px;background:#fef2f2;border-radius:8px"><span style="font-size:12px">مرفوضة</span><b style="color:#dc2626">'+rej+'</b></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:9px 13px;background:#eff6ff;border-radius:8px"><span style="font-size:12px">قيد المراجعة</span><b style="color:#2563eb">'+rev+'</b></div>'+
+    (kTotal?
+    '<div style="font-size:12px;font-weight:700;color:var(--primary);margin:8px 0 4px">📊 مهام المؤشرات</div>'+
+    '<div style="display:flex;justify-content:space-between;padding:9px 13px;background:#f0fdf4;border-radius:8px"><span style="font-size:12px">مكتملة/مقبولة</span><b style="color:#16a34a">'+kDone+'</b></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:9px 13px;background:#fef2f2;border-radius:8px"><span style="font-size:12px">قيد المراجعة/لم تُسلَّم</span><b style="color:#f59e0b">'+(kTotal-kDone)+'</b></div>':'')+ 
     '</div>';
   const myCtx=document.getElementById('myStatusChart');
   if(myCtx){if(chartInstances['myStatus'])chartInstances['myStatus'].destroy();
