@@ -892,10 +892,16 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
             <button class="ftab on" onclick="setKpiDashFilter('all',this)">الكل</button>
             <button class="ftab" onclick="setKpiDashFilter('جودة الخدمات',this)">⭐ جودة الخدمات</button>
             <button class="ftab" onclick="setKpiDashFilter('الامتثال والالتزام',this)">📋 الامتثال والالتزام</button>
-            <button onclick="downloadKpiReport()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:linear-gradient(135deg,#0f2744,#1a3a5c);color:#d1ae37;border:1.5px solid #d1ae37;border-radius:8px;font-family:Tajawal,sans-serif;font-weight:700;font-size:13px;cursor:pointer">
-              <i class="fas fa-download"></i> تحميل التقرير
-            </button>
+
           </div>
+        </div>
+
+        <!-- زر تحميل التقرير -->
+        <div style="display:flex;justify-content:flex-start;margin-bottom:16px">
+          <button onclick="downloadKpiReport()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 22px;background:linear-gradient(135deg,#0f2744,#1a3a5c);color:#d1ae37;border:2px solid #d1ae37;border-radius:10px;font-family:Tajawal,sans-serif;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 4px 15px rgba(209,174,55,0.3)">
+            <i class="fas fa-file-download" style="font-size:16px"></i>
+            تحميل تقرير المؤشرات PDF
+          </button>
         </div>
 
         <!-- بطاقات الملخص الكلي -->
