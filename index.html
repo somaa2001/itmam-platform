@@ -1143,9 +1143,15 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
       <button class="btn-cc" onclick="hideModal('viewModal')">إغلاق</button>
     </div>
     <div id="userActions" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-      <!-- رفع مرفق للتسليم -->
+      <div style="background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#854d0e">
+        <i class="fas fa-exclamation-circle" style="margin-left:5px"></i> يجب رفع ملف <b>أو</b> كتابة ملاحظة على الأقل قبل التسليم
+      </div>
+      <div class="ig" style="margin-bottom:10px">
+        <label style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:6px;display:block"><i class="fas fa-comment-alt" style="margin-left:5px;color:var(--blue)"></i> ملاحظة التسليم</label>
+        <textarea id="submitNote" placeholder="اكتب ملاحظتك أو وصف العمل المنجز..." style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--rs);font-family:'Tajawal',sans-serif;font-size:13px;outline:none;resize:vertical;min-height:65px;"></textarea>
+      </div>
       <div style="margin-bottom:10px">
-        <label style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:6px;display:block"><i class="fas fa-paperclip" style="margin-left:5px;color:var(--blue)"></i> مرفق التسليم (اختياري)</label>
+        <label style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:6px;display:block"><i class="fas fa-paperclip" style="margin-left:5px;color:var(--blue)"></i> مرفق التسليم</label>
         <label class="file-upload-area" style="cursor:pointer">
           <i class="fas fa-upload"></i>
           <span id="submitFileName">اضغط لاختيار ملف</span>
@@ -1884,10 +1890,20 @@ async function changeStatus(status){
 async function submitTask(){
   const t=tasks.find(t=>t.id===currentTaskId);
   if((t.submitCount||0)>=2){toast('انتهت محاولات التسليم (2/2)','err');return;}
-  // رفع ملف التسليم إذا وجد
+  // التحقق من وجود ملف أو نص
   const fileInp=document.getElementById('submitFileInp');
+  const noteInp=document.getElementById('submitNote');
+  const hasFile=fileInp&&fileInp.files&&fileInp.files[0];
+  const hasNote=noteInp&&noteInp.value.trim();
+  if(!hasFile&&!hasNote){
+    toast('⚠️ يجب رفع ملف أو كتابة ملاحظة قبل التسليم','err');
+    // تمييز الحقول الفارغة
+    if(noteInp)noteInp.style.borderColor='#ef4444';
+    setTimeout(()=>{if(noteInp)noteInp.style.borderColor='';},2000);
+    return;
+  }
   let fileName='',fileUrl='';
-  if(fileInp&&fileInp.files[0]){
+  if(hasFile){
     const file=fileInp.files[0];fileName=file.name;
     showLoading();
     const {data:fd,error:fe}=await db.storage.from('attachments').upload(t.id+'/submit/'+file.name,file,{upsert:true});
@@ -1896,9 +1912,10 @@ async function submitTask(){
   }
   t.submitCount=(t.submitCount||0)+1;
   t.submitTime=nowStamp();
-  // الحالة تصبح "قيد المراجعة" وليس مكتملة — الادمن يقرر
   t.status='review';
   if(fileName){t.file=fileName;t.fileUrl=fileUrl;}
+  const noteText=hasNote?noteInp.value.trim():'';
+  if(noteText) t.comments.push({author:currentUser.name,txt:'📝 ملاحظة التسليم: '+noteText,time:t.submitTime,type:'note'});
   t.comments.push({author:currentUser.name,txt:'📤 تم تسليم المهمة | وقت التسليم: '+t.submitTime+(fileName?' | المرفق: '+fileName:''),time:t.submitTime,type:'submit'});
   showLoading();
   const {error}=await db.from('tasks').update(taskToDb(t)).eq('id',currentTaskId);
