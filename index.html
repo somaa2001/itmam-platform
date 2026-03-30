@@ -880,6 +880,81 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
         </div>
       </div>
 
+      <!-- ADMIN KPI DASHBOARD -->
+      <div class="pg" id="pg-kpi-dashboard">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:20px;font-weight:800;color:var(--primary)">لوحة مؤشرات الدليل — حج 1447</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">نظرة شاملة على أداء جميع الإدارات في مهام المؤشرات</div>
+          </div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button class="ftab on" onclick="setKpiDashFilter('all',this)">الكل</button>
+            <button class="ftab" onclick="setKpiDashFilter('جودة الخدمات',this)">⭐ جودة الخدمات</button>
+            <button class="ftab" onclick="setKpiDashFilter('الامتثال والالتزام',this)">📋 الامتثال والالتزام</button>
+          </div>
+        </div>
+
+        <!-- بطاقات الملخص الكلي -->
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:11px;margin-bottom:20px" id="akdStatCards"></div>
+
+        <!-- شريط صحة المؤشرات -->
+        <div style="background:linear-gradient(135deg,#0f2744,#1a3a5c);border-radius:var(--r);padding:22px 28px;margin-bottom:20px;display:flex;align-items:center;gap:36px">
+          <div style="flex:1;display:flex;gap:36px;flex-wrap:wrap">
+            <div><div style="font-size:30px;font-weight:900;color:#1db954" id="akdPct">0%</div><div style="font-size:10.5px;color:rgba(255,255,255,.5)">نسبة الإنجاز الكلية</div></div>
+            <div><div style="font-size:30px;font-weight:900;color:#f59e0b" id="akdPending">0</div><div style="font-size:10.5px;color:rgba(255,255,255,.5)">لم تُسلَّم</div></div>
+            <div><div style="font-size:30px;font-weight:900;color:#3b82f6" id="akdReview">0</div><div style="font-size:10.5px;color:rgba(255,255,255,.5)">قيد المراجعة</div></div>
+            <div><div style="font-size:30px;font-weight:900;color:#ef4444" id="akdRej">0</div><div style="font-size:10.5px;color:rgba(255,255,255,.5)">مرفوضة</div></div>
+            <div><div style="font-size:30px;font-weight:900;color:#f97316" id="akdSupport">0</div><div style="font-size:10.5px;color:rgba(255,255,255,.5)">تحتاج دعم</div></div>
+          </div>
+          <div style="text-align:left">
+            <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:4px">مؤشر الصحة العام</div>
+            <div style="font-size:18px;font-weight:800;color:#fff" id="akdHealthLabel">—</div>
+          </div>
+          <div style="position:relative;width:82px;height:82px">
+            <canvas id="akdHealthChart" width="82" height="82"></canvas>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+              <div style="font-size:19px;font-weight:800;color:#fff" id="akdScore">0</div>
+              <div style="font-size:9px;color:rgba(255,255,255,.4)">/100</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- صف 1: مقارنة الإدارات + توزيع المعايير -->
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px">
+          <div class="dcard">
+            <div class="dcard-title"><i class="fas fa-chart-bar" style="color:var(--blue)"></i> مقارنة الإدارات — نسب الإنجاز</div>
+            <div style="height:230px;position:relative"><canvas id="akdDeptChart"></canvas></div>
+          </div>
+          <div class="dcard">
+            <div class="dcard-title"><i class="fas fa-chart-pie" style="color:var(--purple)"></i> توزيع المعايير</div>
+            <div style="height:160px;position:relative"><canvas id="akdCriteriaChart"></canvas></div>
+            <div style="display:flex;gap:10px;justify-content:center;margin-top:8px;font-size:11px;flex-wrap:wrap">
+              <span style="color:#7c3aed">● جودة الخدمات</span>
+              <span style="color:#16a34a">● الامتثال والالتزام</span>
+              <span style="color:#94a3b8">● غير محدد</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- صف 2: تفصيل كل إدارة -->
+        <div class="dcard" style="margin-bottom:16px">
+          <div class="dcard-title"><i class="fas fa-tasks" style="color:var(--accent)"></i> تفصيل الإدارات</div>
+          <div id="akdDeptBars"></div>
+        </div>
+
+        <!-- صف 3: آخر التسليمات + المهام العاجلة -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="dcard">
+            <div class="dcard-title"><i class="fas fa-clock" style="color:var(--warn)"></i> آخر التسليمات</div>
+            <div id="akdRecentSubmits" style="max-height:220px;overflow-y:auto"></div>
+          </div>
+          <div class="dcard">
+            <div class="dcard-title"><i class="fas fa-fire" style="color:var(--danger)"></i> تحتاج انتباهاً فورياً</div>
+            <div id="akdUrgent" style="max-height:220px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- ANNOUNCEMENTS -->
       <div class="pg" id="pg-announcements">
         <div class="page-hdr">
@@ -921,7 +996,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
           <div class="chat-main-p">
             <div class="chat-hdr" id="chatHdr">
               <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#0f2744,#3b82f6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700">ع</div>
-              <div><div style="font-size:13.5px;font-weight:700">القناة العامة</div><div style="font-size:10.5px;color:var(--accent)">● متصل</div></div>
+              <div>
+                <div style="font-size:13.5px;font-weight:700" id="chatHdrTitle">القناة العامة</div>
+                <div style="font-size:10.5px" id="chatHdrStatus">...</div>
+              </div>
             </div>
             <div class="chat-msgs" id="chatMsgs"></div>
             <div class="chat-inp-area">
@@ -1459,7 +1537,9 @@ async function loadAllData(){
 }
 
 function logout(){
-  currentUser=null;tasks=[];users=[];announcements=[];complaints=[];
+  if(chatPolling)clearInterval(chatPolling);
+  if(presencePolling)clearInterval(presencePolling);
+  currentUser=null;tasks=[];users=[];announcements=[];complaints=[];kpiTasks=[];
   document.getElementById('landingPage').style.display='flex';
   document.getElementById('appLayout').classList.remove('show');
 }
@@ -1477,6 +1557,7 @@ function buildSidebar(){
     <div class="sb-item" data-pg="departments"><i class="fas fa-sitemap"></i> الإدارات</div>
     <div class="sb-item" data-pg="tasks"><i class="fas fa-tasks"></i> كل المهام</div>
     <div class="sb-item" data-pg="kpi-tasks"><i class="fas fa-chart-line"></i> مهام مؤشرات الدليل حج عام 1447</div>
+    <div class="sb-item" data-pg="kpi-dashboard"><i class="fas fa-tachometer-alt"></i> لوحة مؤشرات الدليل</div>
     <div class="sb-sec">التواصل</div>
     <div class="sb-item" data-pg="announcements"><i class="fas fa-bullhorn"></i> التعاميم <span class="sb-badge" id="sbAnnBadge" style="display:none">0</span></div>
     <div class="sb-item" data-pg="complaints"><i class="fas fa-flag"></i> البلاغات <span class="sb-badge" id="sbComplaintBadge" style="display:none">0</span></div>
@@ -1513,7 +1594,7 @@ function buildSidebar(){
 // ══════════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════════
-const TITLES={dashboard:'لوحة التحكم',departments:'الإدارات','dept-tasks':'مهام الإدارة',tasks:'كل المهام','kpi-tasks':'مهام مؤشرات الدليل حج عام 1447','my-tasks':'مهامي','my-kpi':'إحصائيات إدارتي','dept-dashboard':'داشبورد إدارتي',announcements:'التعاميم',complaints:'نظام البلاغات',chat:'الدردشة',users:'إدارة المستخدمين',kpi:'مؤشرات الأداء'};
+const TITLES={dashboard:'لوحة التحكم',departments:'الإدارات','dept-tasks':'مهام الإدارة',tasks:'كل المهام','kpi-tasks':'مهام مؤشرات الدليل حج عام 1447','kpi-dashboard':'لوحة مؤشرات الدليل — حج 1447','my-tasks':'مهامي','my-kpi':'إحصائيات إدارتي','dept-dashboard':'داشبورد إدارتي',announcements:'التعاميم',complaints:'نظام البلاغات',chat:'الدردشة',users:'إدارة المستخدمين',kpi:'مؤشرات الأداء'};
 
 function navigate(pg){
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
@@ -1531,6 +1612,7 @@ function navigate(pg){
   if(pg==='announcements') renderAnn();
   if(pg==='chat') renderChat();
   if(pg==='kpi-tasks'){loadKpiTasks().then(()=>{renderKpiTasks();updateSideBadges();});}
+  if(pg==='kpi-dashboard'){loadKpiTasks().then(()=>renderAdminKpiDashboard());}
   if(pg==='my-kpi'){loadKpiTasks().then(()=>{renderMyKpi();updateSideBadges();});}
   if(pg==='dept-dashboard'){loadKpiTasks().then(()=>renderDeptDashboard());}
   if(pg==='complaints'){fillComplaintDeptSelect();renderComplaints();}
@@ -2532,20 +2614,54 @@ function renderMyKpi(){
 // ══════════════════════════════════════════════
 let currentRoom='القناة العامة';
 let chatPolling=null;
+let presencePolling=null;
+let onlineUsers=new Set();
+
+const DEPT_COLORS={'إدارة المشاعر المقدسة':'#8b5cf6','إدارة التسكين':'#f59e0b','إدارة الإعاشة':'#22c55e','إدارة النقل والمواصلات':'#3b82f6','إدارة العمليات والبلاغات':'#ef4444','إدارة خدمة العملاء':'#8b5cf6','الإدارة النسائية':'#ec4899','إدارة تجربة الحاج':'#0ea5e9','بطاقات نسك':'#10b981'};
+function deptColor(d){return DEPT_COLORS[d]||'#64748b';}
+
+async function updatePresence(){
+  if(!currentUser)return;
+  await db.from('presence').upsert({username:currentUser.username,name:currentUser.name,dept:currentUser.dept,last_seen:new Date().toISOString()},{onConflict:'username'});
+}
+
+async function loadPresence(){
+  const since=new Date(Date.now()-2*60*1000).toISOString();
+  const {data}=await db.from('presence').select('*').gte('last_seen',since);
+  onlineUsers=new Set((data||[]).map(u=>u.username));
+  const cnt=onlineUsers.size;
+  const hdrStatus=document.getElementById('chatHdrStatus');
+  if(hdrStatus){hdrStatus.textContent=cnt>0?cnt+' متصل الآن':'لا أحد متصل';hdrStatus.style.color=cnt>0?'#1db954':'#94a3b8';}
+}
 
 async function renderChat(){
+  await updatePresence();
+  await loadPresence();
   const isAdmin=currentUser?.role==='admin';
-  const rooms=isAdmin?
-    [{name:'القناة العامة',color:'#0f2744'},{name:'إدارة المشاعر',color:'#8b5cf6'},{name:'إدارة الإعاشة',color:'#22c55e'},{name:'إدارة التسكين',color:'#f59e0b'},{name:'إدارة النقل',color:'#3b82f6'}]:
-    [{name:'القناة العامة',color:'#0f2744'},{name:currentUser.dept,color:'#3b82f6'}];
-  document.getElementById('chatRooms').innerHTML=rooms.map((r,i)=>
-    '<div class="chat-room '+(r.name===currentRoom?'on':'')+'" onclick="switchRoom(this,\''+r.name.replace(/'/g,"\\'")+'\')">'+
-    '<div class="cr-av" style="background:'+r.color+'">'+r.name[0]+'</div>'+
-    '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:600">'+r.name+'</div></div></div>'
-  ).join('');
+  const allDepts=[...new Set(users.filter(u=>u.role!=='admin').map(u=>u.dept))].filter(Boolean);
+  let rooms=[{name:'القناة العامة',color:'#0f2744',dept:''}];
+  if(isAdmin){
+    allDepts.forEach(dept=>rooms.push({name:dept,color:deptColor(dept),dept}));
+  } else {
+    rooms.push({name:currentUser.dept,color:deptColor(currentUser.dept),dept:currentUser.dept});
+  }
+  document.getElementById('chatRooms').innerHTML=rooms.map(r=>{
+    const deptOn=r.dept?[...onlineUsers].some(u=>{const usr=users.find(x=>x.username===u);return usr&&usr.dept===r.dept;}):onlineUsers.size>0;
+    const label=r.name.replace('إدارة ','').substring(0,20);
+    return '<div class="chat-room '+(r.name===currentRoom?'on':'')+' " onclick="switchRoom(this,\''+r.name.replace(/'/g,"\\'")+'\')">'+
+      '<div class="cr-av" style="background:'+r.color+';position:relative">'+r.name[0]+
+        '<div style="position:absolute;bottom:-1px;left:-1px;width:9px;height:9px;border-radius:50%;border:2px solid #1a3a5c;background:'+(deptOn?'#1db954':'#94a3b8')+'" title="'+(deptOn?'متصل':'غير متصل')+'"></div>'+
+      '</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+label+'</div>'+
+        '<div style="font-size:9.5px;color:'+(deptOn?'#1db954':'#94a3b8')+'">'+(deptOn?'● متصل':'○ غير متصل')+'</div>'+
+      '</div></div>';
+  }).join('');
   await loadMsgs();
-  if(chatPolling) clearInterval(chatPolling);
-  chatPolling=setInterval(loadMsgs,5000);
+  if(chatPolling)clearInterval(chatPolling);
+  chatPolling=setInterval(()=>{loadMsgs();},5000);
+  if(presencePolling)clearInterval(presencePolling);
+  presencePolling=setInterval(async()=>{await updatePresence();await loadPresence();},60000);
 }
 
 async function loadMsgs(){
@@ -2562,8 +2678,8 @@ async function loadMsgs(){
       '<div class="msg-t">'+t+'</div></div>';
   }).join('');
   if(wasBottom) msgs.scrollTop=msgs.scrollHeight;
-  const hdr=document.querySelector('.chat-hdr div:nth-child(2) div:first-child');
-  if(hdr)hdr.textContent=currentRoom;
+  const hdrTitle=document.getElementById('chatHdrTitle');
+  if(hdrTitle)hdrTitle.textContent=currentRoom;
 }
 
 function switchRoom(el,name){
@@ -2743,6 +2859,146 @@ function renderDashCharts(){
   if(kc){if(chartInstances['kpiComp'])chartInstances['kpiComp'].destroy();
     chartInstances['kpiComp']=new Chart(kc,{type:'bar',data:{labels:sn,datasets:[{label:'منجزة',data:doneD,backgroundColor:'rgba(34,197,94,.8)',borderRadius:4},{label:'مرفوضة',data:rejD,backgroundColor:'rgba(239,68,68,.8)',borderRadius:4},{label:'مستعجلة',data:urgD,backgroundColor:'rgba(245,158,11,.8)',borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Tajawal'},boxWidth:12}}},scales:{x:{grid:{color:'#f1f5f9'},ticks:{font:{family:'Tajawal'}}},y:{grid:{display:false},ticks:{font:{family:'Tajawal',size:12}}}}}});}
   updateAchBars();updateAnnStats();updateStats();
+}
+
+// ══════════════════════════════════════════════
+// ADMIN KPI DASHBOARD
+// ══════════════════════════════════════════════
+let akdFilter='all';
+let akdCharts={};
+
+function setKpiDashFilter(f,btn){
+  akdFilter=f;
+  document.querySelectorAll('#pg-kpi-dashboard .ftab').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  renderAdminKpiDashboard();
+}
+
+function renderAdminKpiDashboard(){
+  let list=kpiTasks;
+  if(akdFilter!=='all') list=list.filter(t=>t.criteria===akdFilter);
+
+  const total=list.length;
+  const done=list.filter(t=>['completed','accepted'].includes(t.status)).length;
+  const rej=list.filter(t=>t.status==='rejected').length;
+  const rev=list.filter(t=>t.status==='review'&&(t.submitCount||0)>0).length;
+  const pending=list.filter(t=>t.status==='review'&&(t.submitCount||0)===0).length;
+  const support=list.filter(t=>t.needSupport).length;
+  const pct=total?Math.round(done/total*100):0;
+  const score=Math.max(0,pct-Math.floor(rej/Math.max(total,1)*20));
+
+  // بطاقات
+  document.getElementById('akdStatCards').innerHTML=
+    '<div class="sc"><div class="sc-ico ic-p"><i class="fas fa-bullseye"></i></div><div><div class="sc-val">'+total+'</div><div class="sc-lbl">إجمالي المؤشرات</div></div></div>'+
+    '<div class="sc"><div class="sc-ico ic-g"><i class="fas fa-check-circle"></i></div><div><div class="sc-val" style="color:#16a34a">'+done+'</div><div class="sc-lbl">مقبولة/مكتملة</div></div></div>'+
+    '<div class="sc"><div class="sc-ico ic-b"><i class="fas fa-paper-plane"></i></div><div><div class="sc-val" style="color:#3b82f6">'+rev+'</div><div class="sc-lbl">قيد المراجعة</div></div></div>'+
+    '<div class="sc"><div class="sc-ico ic-r"><i class="fas fa-times-circle"></i></div><div><div class="sc-val" style="color:#ef4444">'+rej+'</div><div class="sc-lbl">مرفوضة</div></div></div>'+
+    '<div class="sc" style="border-right:3px solid #f59e0b"><div class="sc-ico ic-y"><i class="fas fa-hourglass-half"></i></div><div><div class="sc-val" style="color:#f59e0b">'+pending+'</div><div class="sc-lbl">لم تُسلَّم</div></div></div>'+
+    '<div class="sc" style="border-right:3px solid #f97316"><div class="sc-ico" style="background:#fff7ed;color:#f97316"><i class="fas fa-hands-helping"></i></div><div><div class="sc-val" style="color:#f97316">'+support+'</div><div class="sc-lbl">تحتاج دعم</div></div></div>';
+
+  // صحة
+  document.getElementById('akdPct').textContent=pct+'%';
+  document.getElementById('akdPending').textContent=pending;
+  document.getElementById('akdReview').textContent=rev;
+  document.getElementById('akdRej').textContent=rej;
+  document.getElementById('akdSupport').textContent=support;
+  document.getElementById('akdScore').textContent=score;
+  document.getElementById('akdHealthLabel').textContent=score>=70?'🟢 أداء ممتاز':score>=40?'🟡 أداء متوسط':'🔴 يحتاج تحسين';
+
+  // دائري صحة
+  const hCtx=document.getElementById('akdHealthChart');
+  if(hCtx){if(akdCharts.health)akdCharts.health.destroy();
+    akdCharts.health=new Chart(hCtx,{type:'doughnut',data:{datasets:[{data:[score,100-score],backgroundColor:[score>=70?'#1db954':score>=40?'#f59e0b':'#ef4444','rgba(255,255,255,.12)'],borderWidth:0}]},options:{cutout:'75%',plugins:{legend:{display:false},tooltip:{enabled:false}},responsive:false}});}
+
+  // مقارنة الإدارات
+  const depts=[...new Set(list.map(t=>t.dept).filter(Boolean))];
+  const deptLabels=depts.map(d=>d.replace('إدارة ','').replace('فريق ','').substring(0,10));
+  const deptDone=depts.map(d=>list.filter(t=>t.dept===d&&['completed','accepted'].includes(t.status)).length);
+  const deptPending=depts.map(d=>list.filter(t=>t.dept===d&&t.status==='review'&&(t.submitCount||0)===0).length);
+  const deptRej=depts.map(d=>list.filter(t=>t.dept===d&&t.status==='rejected').length);
+  const dCtx=document.getElementById('akdDeptChart');
+  if(dCtx){if(akdCharts.dept)akdCharts.dept.destroy();
+    akdCharts.dept=new Chart(dCtx,{type:'bar',data:{labels:deptLabels,datasets:[
+      {label:'مقبولة',data:deptDone,backgroundColor:'rgba(34,197,94,.85)',borderRadius:4},
+      {label:'لم تُسلَّم',data:deptPending,backgroundColor:'rgba(245,158,11,.85)',borderRadius:4},
+      {label:'مرفوضة',data:deptRej,backgroundColor:'rgba(239,68,68,.85)',borderRadius:4}
+    ]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Tajawal'},boxWidth:12}}},scales:{x:{grid:{color:'#f1f5f9'},ticks:{font:{family:'Tajawal'}}},y:{grid:{display:false},ticks:{font:{family:'Tajawal',size:11}}}}}});}
+
+  // توزيع المعايير
+  const c1=list.filter(t=>t.criteria==='جودة الخدمات').length;
+  const c2=list.filter(t=>t.criteria==='الامتثال والالتزام').length;
+  const c3=list.filter(t=>!t.criteria).length;
+  const cCtx=document.getElementById('akdCriteriaChart');
+  if(cCtx){if(akdCharts.criteria)akdCharts.criteria.destroy();
+    akdCharts.criteria=new Chart(cCtx,{type:'doughnut',data:{datasets:[{data:[c1,c2,c3],backgroundColor:['#7c3aed','#16a34a','#94a3b8'],borderWidth:0}]},options:{cutout:'55%',plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:false}});}
+
+  // تفصيل الإدارات بالأشرطة
+  const barsEl=document.getElementById('akdDeptBars');
+  if(!depts.length){barsEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">لا توجد بيانات</div>';}
+  else{
+    barsEl.innerHTML=depts.map(d=>{
+      const dt=list.filter(t=>t.dept===d);
+      const dd=dt.filter(t=>['completed','accepted'].includes(t.status)).length;
+      const dr=dt.filter(t=>t.status==='rejected').length;
+      const dp=dt.filter(t=>t.status==='review'&&(t.submitCount||0)===0).length;
+      const dpct=dt.length?Math.round(dd/dt.length*100):0;
+      const bc=dpct>=70?'green':dpct>=40?'yellow':'red';
+      const dn=d.replace('إدارة ','').replace('فريق ','').substring(0,18);
+      return '<div class="ach-item" style="margin-bottom:14px">'+
+        '<div class="ach-hdr">'+
+          '<span class="ach-name" style="font-size:12.5px">'+dn+'</span>'+
+          '<span class="ach-meta">'+
+            '<span style="color:#16a34a;margin-left:8px">✓'+dd+'</span>'+
+            '<span style="color:#f59e0b;margin-left:8px">⏳'+dp+'</span>'+
+            '<span style="color:#ef4444;margin-left:8px">✗'+dr+'</span>'+
+            '<span style="color:var(--muted)"> / '+dt.length+'</span>'+
+          '</span>'+
+        '</div>'+
+        '<div class="ach-bar-wrap"><div class="ach-bar '+bc+'" style="width:'+dpct+'%">'+dpct+'%</div></div>'+
+      '</div>';
+    }).join('');
+  }
+
+  // آخر التسليمات
+  const submitted=list.filter(t=>(t.submitCount||0)>0).sort((a,b)=>(b.submitTime||'').localeCompare(a.submitTime||'')).slice(0,6);
+  const recEl=document.getElementById('akdRecentSubmits');
+  const ss={review:'background:#fef9c3;color:#ca8a04',accepted:'background:#dcfce7;color:#16a34a',completed:'background:#d1fae5;color:#065f46',rejected:'background:#fee2e2;color:#dc2626'};
+  recEl.innerHTML=!submitted.length?'<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">لا توجد تسليمات بعد</div>':
+    submitted.map(t=>
+      '<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+t.title+'</div>'+
+        '<div style="font-size:10.5px;color:var(--muted)">'+t.dept+' • '+t.submitTime+'</div>'+
+        (t.criteria?'<div style="font-size:10px;color:'+(t.criteria==='جودة الخدمات'?'#7c3aed':'#16a34a')+'">'+t.criteria+'</div>':'')+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'+
+        '<span style="display:inline-flex;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;'+(ss[t.status]||'background:#f1f5f9;color:#64748b')+'">'+SM[t.status]+'</span>'+
+        '<div style="display:flex;gap:4px">'+
+          '<button class="cabt" style="font-size:10px;padding:2px 7px;border-color:#86efac;color:#16a34a" onclick="kpiChangeStatus(\''+t.id+'\',\'accepted\')">✓</button>'+
+          '<button class="cabt del" style="font-size:10px;padding:2px 7px" onclick="kpiChangeStatus(\''+t.id+'\',\'rejected\')">&#10007;</button>'+
+        '</div>'+
+      '</div>'+
+      '</div>'
+    ).join('');
+
+  // تحتاج انتباهاً
+  const urgent=list.filter(t=>t.status==='rejected'||t.needSupport||(t.priority==='urgent'&&(t.submitCount||0)===0));
+  const urgEl=document.getElementById('akdUrgent');
+  urgEl.innerHTML=!urgent.length?
+    '<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px"><i class="fas fa-check-circle" style="color:#16a34a;font-size:28px;display:block;margin-bottom:8px"></i>لا توجد مهام تحتاج انتباهاً</div>':
+    urgent.slice(0,6).map(t=>{
+      const tag=t.status==='rejected'?{bg:'#fef2f2',col:'#dc2626',icon:'times-circle',lbl:'مرفوضة'}:
+                t.needSupport?{bg:'#fef3c7',col:'#d97706',icon:'hands-helping',lbl:'تحتاج دعم'}:
+                {bg:'#fff7ed',col:'#ea580c',icon:'exclamation-circle',lbl:'مستعجلة ولم تُسلَّم'};
+      return '<div style="padding:9px 12px;margin-bottom:6px;background:'+tag.bg+';border-radius:8px;display:flex;align-items:center;gap:8px">'+
+        '<i class="fas fa-'+tag.icon+'" style="color:'+tag.col+';font-size:14px;flex-shrink:0"></i>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+t.title+'</div>'+
+          '<div style="font-size:10.5px;color:var(--muted)">'+t.dept+' — <span style="color:'+tag.col+'">'+tag.lbl+'</span></div>'+
+        '</div>'+
+        '<button class="cabt" style="font-size:10px;padding:3px 8px;flex-shrink:0" onclick="viewKpiTask(\''+t.id+'\')">عرض</button>'+
+      '</div>';
+    }).join('');
 }
 
 // ══════════════════════════════════════════════
