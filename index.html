@@ -793,7 +793,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
       <!-- KPI TASKS -->
       <div class="pg" id="pg-kpi-tasks">
         <div class="dept-page-hdr">
-          <div><div class="dept-page-title">مهام مؤشرات الدليل</div></div>
+          <div><div class="dept-page-title">مهام مؤشرات الدليل حج عام 1447</div></div>
           <button class="btn-new" onclick="showModal('kpiTaskModal')"><i class="fas fa-plus"></i> إضافة مهمة مؤشر</button>
         </div>
         <div class="cards-grid" id="kpiTasksGrid"></div>
@@ -819,7 +819,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
           <div>
             <div style="font-size:20px;font-weight:800;color:var(--primary)" id="deptDashTitle">لوحة مؤشرات الدليل</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:3px" id="deptDashSub">أداء إدارتك في مهام مؤشرات الدليل</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px" id="deptDashSub">أداء إدارتك في مهام مؤشرات الدليل حج عام 1447</div>
           </div>
         </div>
 
@@ -1114,12 +1114,20 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
     <div class="modal-hdr"><div class="modal-ttl">إضافة/تعديل مهمة مؤشر الدليل</div><button class="modal-cls" onclick="hideModal('kpiTaskModal');currentKpiId=null">×</button></div>
     <div class="ig"><label>عنوان المهمة</label><input type="text" id="fKpiTitle"></div>
     <div class="ig"><label>المؤشر المرتبط</label><input type="text" id="fKpiIndicator"></div>
+    <div class="ig"><label>المعيار الرئيسي</label>
+      <select id="fKpiCriteria">
+        <option value="">— اختر المعيار —</option>
+        <option value="جودة الخدمات">⭐ معيار جودة الخدمات</option>
+        <option value="الامتثال والالتزام">📋 معيار الامتثال والالتزام</option>
+      </select>
+    </div>
     <div class="ig"><label>الإدارة المسؤولة</label><select id="fKpiDept"></select></div>
     <div class="ig"><label>الوصف</label><textarea id="fKpiDesc"></textarea></div>
     <div class="ig-row">
       <div class="ig"><label>الحالة</label><select id="fKpiStatus"><option value="review">قيد المراجعة</option><option value="accepted">مقبولة</option><option value="completed">مكتملة</option><option value="rejected">مرفوضة</option></select></div>
       <div class="ig"><label>الأولوية</label><select id="fKpiPriority"><option value="urgent">🔴 مستعجلة</option><option value="normal" selected>🟢 عادية</option><option value="low">🔵 غير مستعجلة</option></select></div>
     </div>
+    <div class="ig"><label>تاريخ انتهاء التسليم</label><input type="date" id="fKpiEnd"></div>
     <div class="ig">
       <label>مرفق (اختياري)</label>
       <label class="file-upload-area">
@@ -1155,6 +1163,31 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
   <div class="modal-box" style="max-width:400px">
     <div class="modal-hdr"><div class="modal-ttl">من قرأ التعميم</div><button class="modal-cls" onclick="hideModal('readersModal')">×</button></div>
     <div id="readersList"></div>
+  </div>
+</div>
+
+<!-- KPI SUBMIT MODAL -->
+<div class="modal-ov" id="kpiSubmitModal">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-hdr"><div class="modal-ttl">تسليم مهمة المؤشر</div><button class="modal-cls" onclick="hideModal('kpiSubmitModal')">×</button></div>
+    <div id="kpiSubmitInfo" style="padding:10px 14px;background:#f0f9ff;border-radius:8px;margin-bottom:14px;font-size:13px;color:var(--primary)"></div>
+    <div class="ig">
+      <label>ملاحظة التسليم (اختياري إذا رفعت ملف)</label>
+      <textarea id="kpiSubmitNote" placeholder="اكتب ملاحظتك أو وصف العمل المنجز..." style="min-height:80px"></textarea>
+    </div>
+    <div class="ig">
+      <label>مرفق (اختياري إذا كتبت ملاحظة)</label>
+      <label class="file-upload-area">
+        <i class="fas fa-paperclip"></i>
+        <span id="kpiSubmitFileName">اضغط لرفع ملف</span>
+        <input type="file" id="kpiSubmitFile" style="display:none" onchange="document.getElementById('kpiSubmitFileName').textContent=this.files[0]?.name||'اضغط لرفع ملف'">
+      </label>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">⚠️ يجب رفع ملف أو كتابة ملاحظة على الأقل</div>
+    <div class="modal-foot">
+      <button class="btn-ok" style="background:#16a34a" onclick="confirmKpiSubmit()"><i class="fas fa-paper-plane" style="margin-left:6px"></i>تسليم</button>
+      <button class="btn-cc" onclick="hideModal('kpiSubmitModal')">إلغاء</button>
+    </div>
   </div>
 </div>
 
@@ -1443,7 +1476,7 @@ function buildSidebar(){
     <div class="sb-sec">إدارة المهام</div>
     <div class="sb-item" data-pg="departments"><i class="fas fa-sitemap"></i> الإدارات</div>
     <div class="sb-item" data-pg="tasks"><i class="fas fa-tasks"></i> كل المهام</div>
-    <div class="sb-item" data-pg="kpi-tasks"><i class="fas fa-chart-line"></i> مهام مؤشرات الدليل</div>
+    <div class="sb-item" data-pg="kpi-tasks"><i class="fas fa-chart-line"></i> مهام مؤشرات الدليل حج عام 1447</div>
     <div class="sb-sec">التواصل</div>
     <div class="sb-item" data-pg="announcements"><i class="fas fa-bullhorn"></i> التعاميم <span class="sb-badge" id="sbAnnBadge" style="display:none">0</span></div>
     <div class="sb-item" data-pg="complaints"><i class="fas fa-flag"></i> البلاغات <span class="sb-badge" id="sbComplaintBadge" style="display:none">0</span></div>
@@ -1462,7 +1495,7 @@ function buildSidebar(){
     <div class="sb-item on" data-pg="my-tasks"><i class="fas fa-tasks"></i> مهامي <span class="sb-badge" id="sbMyBadge" style="display:none">0</span></div>
     <div class="sb-sec">الأداء</div>
     <div class="sb-item" data-pg="dept-dashboard"><i class="fas fa-th-large"></i> داشبورد إدارتي</div>
-    <div class="sb-item" data-pg="kpi-tasks"><i class="fas fa-chart-line"></i> مهام مؤشرات الدليل <span class="sb-badge" id="sbKpiBadge" style="display:none">0</span></div>
+    <div class="sb-item" data-pg="kpi-tasks"><i class="fas fa-chart-line"></i> مهام مؤشرات الدليل حج عام 1447 <span class="sb-badge" id="sbKpiBadge" style="display:none">0</span></div>
     <div class="sb-item" data-pg="my-kpi"><i class="fas fa-chart-bar"></i> إحصائيات إدارتي</div>
     <div class="sb-sec">التواصل</div>
     <div class="sb-item" data-pg="announcements"><i class="fas fa-bullhorn"></i> التعاميم <span class="sb-badge" id="sbAnnBadge" style="display:none">0</span></div>
@@ -1480,7 +1513,7 @@ function buildSidebar(){
 // ══════════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════════
-const TITLES={dashboard:'لوحة التحكم',departments:'الإدارات','dept-tasks':'مهام الإدارة',tasks:'كل المهام','kpi-tasks':'مهام مؤشرات الدليل','my-tasks':'مهامي','my-kpi':'إحصائيات إدارتي','dept-dashboard':'داشبورد إدارتي',announcements:'التعاميم',complaints:'نظام البلاغات',chat:'الدردشة',users:'إدارة المستخدمين',kpi:'مؤشرات الأداء'};
+const TITLES={dashboard:'لوحة التحكم',departments:'الإدارات','dept-tasks':'مهام الإدارة',tasks:'كل المهام','kpi-tasks':'مهام مؤشرات الدليل حج عام 1447','my-tasks':'مهامي','my-kpi':'إحصائيات إدارتي','dept-dashboard':'داشبورد إدارتي',announcements:'التعاميم',complaints:'نظام البلاغات',chat:'الدردشة',users:'إدارة المستخدمين',kpi:'مؤشرات الأداء'};
 
 function navigate(pg){
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
@@ -2185,8 +2218,10 @@ async function updateComplaint(){
 function mapKpiTask(r){
   return {
     id:r.id, title:r.title||'', indicator:r.indicator||'',
+    criteria:r.criteria||'',
     desc:r.description||'', priority:r.priority||'normal',
     status:r.status||'review', dept:r.department||'',
+    endDate:r.end_date||null,
     file:r.file_name||'', fileUrl:r.file_url||'',
     needSupport:r.need_support||false, submitCount:r.submit_count||0,
     submitTime:r.submit_time||null, approveTime:r.approve_time||null,
@@ -2209,11 +2244,14 @@ async function saveKpiTask(){
     if(!fe&&fd){const {data:ud}=db.storage.from('attachments').getPublicUrl(nid+'/'+file.name);fileUrl=ud?.publicUrl||'';}
   }
   showLoading();
+  const criteria=document.getElementById('fKpiCriteria')?.value||'';
+  const kpiEndDate=document.getElementById('fKpiEnd')?.value||null;
   const {data,error}=await db.from('kpi_tasks').insert({
-    id:nid,title,indicator,description:document.getElementById('fKpiDesc').value,
+    id:nid,title,indicator,criteria,description:document.getElementById('fKpiDesc').value,
     priority:document.getElementById('fKpiPriority').value,
     status:document.getElementById('fKpiStatus').value,
     department:dept, file_name:fileName, file_url:fileUrl,
+    end_date:kpiEndDate,
     need_support:false,submit_count:0,comments:[]
   }).select().single();
   hideLoading();
@@ -2244,30 +2282,58 @@ function renderKpiTasks(){
   const grid=document.getElementById('kpiTasksGrid');if(!grid)return;
   if(!kpiTasks.length){grid.innerHTML='<div class="empty-state"><i class="fas fa-chart-line"></i><p>لا توجد مهام مؤشرات</p></div>';return;}
   const isAdmin=currentUser?.role==='admin';
-  const pc={urgent:'prio-urgent',normal:'prio-normal',low:'prio-low'};
-  const pl={urgent:'🔴 مستعجلة',normal:'🟢 عادية',low:'🔵 غير مستعجلة'};
+  const pl={urgent:'🔴 مستعجلة',normal:'🟢 عادية',low:'🔵 غير مستعجلة',closed:'⚫ مقفلة'};
   const ss={review:'background:#fef9c3;color:#ca8a04',accepted:'background:#dcfce7;color:#16a34a',completed:'background:#d1fae5;color:#065f46',rejected:'background:#fee2e2;color:#dc2626'};
-  grid.innerHTML=kpiTasks.map(t=>
-    '<div class="task-card '+(pc[t.priority]||'prio-normal')+'" id="kcard-'+t.id+'">'+
+  grid.innerHTML=kpiTasks.map(t=>{
+    const chkSubmit=canSubmitKpi(t);
+    const isLocked=!isAdmin&&!chkSubmit.can;
+    const days=daysUntil(t.endDate);
+    const cardCls=isLocked?'prio-closed':({urgent:'prio-urgent',normal:'prio-normal',low:'prio-low',closed:'prio-closed'}[t.priority]||'prio-normal');
+    const rem=2-(t.submitCount||0);
+    return '<div class="task-card '+cardCls+'" id="kcard-'+t.id+'"'+(isLocked?' style="opacity:.8"':'')+'>'+
     '<div class="card-prio-tag">'+(pl[t.priority]||'عادية')+'</div>'+
+    (isLocked&&!isAdmin?'<div style="position:absolute;top:8px;left:8px;background:#f1f5f9;color:#64748b;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;z-index:1"><i class="fas fa-lock" style="margin-left:3px"></i>'+(days!==null&&days>0?'يفتح بعد '+(days-20)+' يوم':'قريباً')+'</div>':'')+
     '<div style="font-size:15px;font-weight:800;margin-top:20px">'+t.title+'</div>'+
     '<div style="font-size:11.5px;color:var(--muted)">'+t.id+'</div>'+
     '<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#eff6ff;color:#2563eb"><i class="fas fa-chart-line"></i> '+t.indicator+'</div>'+
+    (t.criteria?'<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:'+(t.criteria==='جودة الخدمات'?'#faf5ff;color:#7c3aed':'#f0fdf4;color:#16a34a')+'"><i class="fas fa-'+(t.criteria==='جودة الخدمات'?'star':'check-double')+'"></i> معيار '+t.criteria+'</div>':'')+
     (t.dept?'<div style="font-size:11px;color:var(--muted)"><i class="fas fa-building" style="margin-left:4px"></i>'+t.dept+'</div>':'')+
+    (t.endDate?'<div style="font-size:11px;color:'+(days!==null&&days<=20?'#dc2626;font-weight:700':'var(--muted)')+'"><i class="fas fa-calendar-alt" style="margin-left:4px"></i>الموعد: '+t.endDate+(days!==null?' ('+days+' يوم متبقي)':'')+'</div>':'')+
     '<div><span style="display:inline-flex;padding:4px 13px;border-radius:20px;font-size:12px;font-weight:600;'+(ss[t.status]||'background:#f1f5f9;color:#64748b')+'">'+SM[t.status]+'</span></div>'+
     (t.needSupport?'<div style="background:#fef3c7;color:#d97706;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:4px"><i class="fas fa-hands-helping"></i> يحتاج دعم</div>':'')+
     (t.submitTime?'<div style="font-size:11px;background:#f0fdf4;color:#16a34a;padding:4px 8px;border-radius:6px"><i class="fas fa-check-circle" style="margin-left:4px"></i>تسليم: '+t.submitTime+' ('+t.submitCount+'/2)</div>':'')+
     (t.file?'<div style="font-size:11px;color:#2563eb"><i class="fas fa-paperclip" style="margin-left:4px"></i>'+t.file+'</div>':'')+
     '<div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">'+
-      (isAdmin?'<button class="cabt" onclick="editKpiTask(\''+t.id+'\')">تعديل</button>':'')+
-      (isAdmin?'<button class="cabt del" onclick="deleteKpiTask(\''+t.id+'\')">حذف</button>':'')+
-      (isAdmin?'<button class="cabt" onclick="kpiChangeStatus(\''+t.id+'\',\'accepted\')" style="border-color:#86efac;color:#16a34a;background:#f0fdf4">✓ قبول</button>':'')+
-      (isAdmin?'<button class="cabt" onclick="kpiChangeStatus(\''+t.id+'\',\'rejected\')" style="border-color:#fca5a5;color:#dc2626;background:#fef2f2">✗ رفض</button>':'')+
-      (!isAdmin?'<button class="cabt submit" onclick="submitKpiTask(\''+t.id+'\')">تسليم ('+(2-(t.submitCount||0))+')</button>':'')+
-      (!isAdmin?'<button class="cabt support'+(t.needSupport?' active':'')+'" onclick="toggleKpiSupport(\''+t.id+'\')">🆘 دعم</button>':'')+
-      '<button class="cabt" onclick="viewKpiTask(\''+t.id+'\')">عرض</button>'+
-    '</div></div>'
-  ).join('');
+      (isAdmin?'<button class="cabt" onclick="editKpiTask(''+t.id+'')">تعديل</button>':'')+
+      (isAdmin?'<button class="cabt del" onclick="deleteKpiTask(''+t.id+'')">حذف</button>':'')+
+      (isAdmin?'<button class="cabt" onclick="kpiChangeStatus(''+t.id+'','accepted')" style="border-color:#86efac;color:#16a34a;background:#f0fdf4">✓ قبول</button>':'')+
+      (isAdmin?'<button class="cabt" onclick="kpiChangeStatus(''+t.id+'','rejected')" style="border-color:#fca5a5;color:#dc2626;background:#fef2f2">✗ رفض</button>':'')+
+      (!isAdmin?(isLocked?'<button class="cabt" disabled style="opacity:.5;font-size:11px;cursor:not-allowed"><i class="fas fa-lock" style="margin-left:3px"></i>'+chkSubmit.reason+'</button>':(rem<=0?'<button class="cabt" disabled style="opacity:.4"><i class="fas fa-lock" style="margin-left:3px"></i>انتهت المحاولات</button>':'<button class="cabt submit" onclick="openKpiSubmitModal(''+t.id+'')"><i class="fas fa-paper-plane" style="margin-left:4px"></i>تسليم ('+rem+')</button>')):'')+
+      (!isAdmin?'<button class="cabt support'+(t.needSupport?' active':'')+'" onclick="toggleKpiSupport(''+t.id+'')">🆘 دعم</button>':'')+
+      '<button class="cabt" onclick="viewKpiTask(''+t.id+'')">عرض</button>'+
+    '</div></div>';
+  }).join('');
+}
+let currentKpiSubmitId=null;
+function openKpiSubmitModal(id){
+  const t=kpiTasks.find(t=>t.id===id);if(!t)return;
+  currentKpiSubmitId=id;
+  const rem=2-(t.submitCount||0);
+  document.getElementById('kpiSubmitInfo').innerHTML=
+    '<b>'+t.title+'</b><br>'+
+    '<span style="font-size:11px;color:var(--muted)">المؤشر: '+t.indicator+'</span><br>'+
+    '<span style="font-size:11px;color:#2563eb">المحاولات المتبقية: '+rem+'/2</span>';
+  document.getElementById('kpiSubmitNote').value='';
+  document.getElementById('kpiSubmitFileName').textContent='اضغط لرفع ملف';
+  const fi=document.getElementById('kpiSubmitFile');if(fi)fi.value='';
+  showModal('kpiSubmitModal');
+}
+
+async function confirmKpiSubmit(){
+  const fileInp=document.getElementById('kpiSubmitFile');
+  const noteInp=document.getElementById('kpiSubmitNote');
+  await submitKpiTask(currentKpiSubmitId,fileInp,noteInp);
+  hideModal('kpiSubmitModal');
 }
 
 async function deleteKpiTask(id){
@@ -2287,14 +2353,35 @@ async function kpiChangeStatus(id,status){
   addNotif('check-circle',status==='accepted'?'g':'r',(status==='accepted'?'✅':'❌')+' مؤشر "'+t.title+'"',id,'kpi');
 }
 
-async function submitKpiTask(id){
+async function submitKpiTask(id,fileInput,textInput){
   const t=kpiTasks.find(t=>t.id===id);if(!t)return;
   if((t.submitCount||0)>=2){toast('انتهت المحاولات (2/2)','err');return;}
+  // تحقق من إمكانية التسليم (مقفلة / غير مستعجلة)
+  const chk=canSubmitKpi(t);
+  if(!chk.can){toast(chk.reason,'err');return;}
+  // ─── 5: يجب رفع ملف أو كتابة نص ───
+  const hasFile=fileInput&&fileInput.files&&fileInput.files[0];
+  const hasText=textInput&&textInput.value.trim();
+  if(!hasFile&&!hasText){toast('يجب رفع ملف أو كتابة ملاحظة قبل التسليم','err');return;}
+  let fileName='',fileUrl='';
+  if(hasFile){
+    showLoading();
+    const file=fileInput.files[0];fileName=file.name;
+    const {data:fd,error:fe}=await db.storage.from('attachments').upload(id+'/submit/'+file.name,file,{upsert:true});
+    if(!fe&&fd){const {data:ud}=db.storage.from('attachments').getPublicUrl(id+'/submit/'+file.name);fileUrl=ud?.publicUrl||'';}
+    hideLoading();
+  }
+  if(hasText) t.comments.push({author:currentUser.name,txt:'📝 ملاحظة التسليم: '+textInput.value.trim(),time:nowStamp()});
   t.submitCount=(t.submitCount||0)+1;
-  t.submitTime=nowStamp();t.status='completed';
-  await db.from('kpi_tasks').update({submit_count:t.submitCount,submit_time:t.submitTime,status:'completed'}).eq('id',id);
-  renderKpiTasks();toast('تم التسليم ✅');
+  t.submitTime=nowStamp();t.status='review';
+  if(fileName){t.file=fileName;t.fileUrl=fileUrl;}
+  showLoading();
+  await db.from('kpi_tasks').update({submit_count:t.submitCount,submit_time:t.submitTime,status:'review',file_name:t.file||null,file_url:t.fileUrl||null,comments:t.comments}).eq('id',id);
+  hideLoading();
+  renderKpiTasks();toast('تم التسليم — قيد المراجعة ✅');
   addNotif('check-circle','g','✅ تسليم مؤشر: "'+t.title+'"',id,'kpi');
+  // إغلاق modal إن كان مفتوحاً
+  hideModal('viewModal');
 }
 
 async function toggleKpiSupport(id){
@@ -2666,7 +2753,7 @@ let ddChartInst={};
 function renderDeptDashboard(){
   const dept=currentUser?.dept;
   document.getElementById('deptDashTitle').textContent='لوحة مؤشرات الدليل — '+dept.replace('إدارة ','');
-  document.getElementById('deptDashSub').textContent='أداء إدارتك في مهام مؤشرات الدليل';
+  document.getElementById('deptDashSub').textContent='أداء إدارتك في مهام مؤشرات الدليل حج عام 1447';
 
   const kList=kpiTasks.filter(t=>t.dept===dept);
   const kDone=kList.filter(t=>['completed','accepted'].includes(t.status)).length;
@@ -2775,6 +2862,27 @@ function renderDeptDashboard(){
 // ══════════════════════════════════════════════
 // HELPERS
 // ══════════════════════════════════════════════
+function daysUntil(dateStr){
+  if(!dateStr) return null;
+  const d=new Date(dateStr);
+  const now=new Date();
+  now.setHours(0,0,0,0);d.setHours(0,0,0,0);
+  return Math.ceil((d-now)/(1000*60*60*24));
+}
+
+function canSubmitKpi(t){
+  // مهمة مقفلة: تفتح قبل 20 يوم من الانتهاء
+  if(t.priority==='closed'){
+    const days=daysUntil(t.endDate);
+    if(days===null||days>20) return {can:false,reason:'🔒 مقفلة — تفتح قبل 20 يوم من الموعد'+(days!==null?' ('+days+' يوم متبقي)':'')};
+  }
+  // مهمة غير مستعجلة: نفس الشرط
+  if(t.priority==='low'){
+    const days=daysUntil(t.endDate);
+    if(days===null||days>20) return {can:false,reason:'⏳ غير مستعجلة — تفتح قبل 20 يوم من الموعد'+(days!==null?' ('+days+' يوم متبقي)':'')};
+  }
+  return {can:true};
+}
 function fmtDate(d){
   if(!d)return'';
   try{const dt=new Date(d);const m=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];return dt.getDate()+' '+m[dt.getMonth()]+' '+dt.getFullYear();}catch(e){return d;}
