@@ -794,7 +794,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
       <div class="pg" id="pg-kpi-tasks">
         <div class="dept-page-hdr">
           <div><div class="dept-page-title">مهام مؤشرات الدليل حج عام 1447</div></div>
-          <button class="btn-new" onclick="showModal('kpiTaskModal')"><i class="fas fa-plus"></i> إضافة مهمة مؤشر</button>
+          <button class="btn-new" id="btnAddKpi" onclick="showModal('kpiTaskModal')" style="display:none"><i class="fas fa-plus"></i> إضافة مهمة مؤشر</button>
         </div>
         <div class="cards-grid" id="kpiTasksGrid"></div>
       </div>
@@ -2786,12 +2786,46 @@ function updateSideBadges(){
   const unreadAnn=announcements.filter(a=>!a.readers.includes(currentUser?.name||'')).length;
   const annBadge=document.getElementById('sbAnnBadge');
   if(annBadge){annBadge.textContent=unreadAnn;annBadge.style.display=unreadAnn?'inline-block':'none';}
-  // KPI badge — عدد مهام المؤشرات غير المسلمة لإدارة اليوزر
+  // KPI badge — للمستخدم العادي
   const kpiBadge=document.getElementById('sbKpiBadge');
   if(kpiBadge&&currentUser?.role!=='admin'){
-    const pendingKpi=kpiTasks.filter(t=>t.dept===currentUser?.dept&&t.status==='review'&&(t.submitCount||0)===0).length;
-    kpiBadge.textContent=pendingKpi;
-    kpiBadge.style.display=pendingKpi?'inline-block':'none';
+    const myKpi=kpiTasks.filter(t=>t.dept===currentUser?.dept);
+    // المهام المفتوحة غير المسلمة
+    const openPending=myKpi.filter(t=>{
+      const d=daysUntil(t.endDate);
+      const locked=(t.priority==='low'||t.priority==='closed')&&d!==null&&d>20;
+      return !locked&&t.status==='review'&&(t.submitCount||0)===0;
+    }).length;
+    // أقرب مهمة مفتوحة — أيامها المتبقية للانتهاء
+    const openTasks=myKpi.filter(t=>{
+      const d=daysUntil(t.endDate);
+      const locked=(t.priority==='low'||t.priority==='closed')&&d!==null&&d>20;
+      return !locked&&t.endDate;
+    }).sort((a,b)=>(daysUntil(a.endDate)||999)-(daysUntil(b.endDate)||999));
+    if(openPending>0){
+      const nearest=openTasks[0];
+      const d=nearest?daysUntil(nearest.endDate):null;
+      kpiBadge.textContent=d!==null?(d<=0?'!':d+'د'):openPending;
+      kpiBadge.style.display='inline-block';
+      kpiBadge.style.background=d!==null&&d<=10?'#ef4444':d!==null&&d<=20?'#f59e0b':'#3b82f6';
+      kpiBadge.title=d!==null?'أقرب موعد: '+d+' يوم':'مهام معلقة';
+    } else {
+      // كل المهام المفتوحة مسلمة — أقرب مهمة مقفلة
+      const lockedTasks=myKpi.filter(t=>{
+        const d=daysUntil(t.endDate);
+        return (t.priority==='low'||t.priority==='closed')&&d!==null&&d>20;
+      }).sort((a,b)=>(daysUntil(a.endDate)||999)-(daysUntil(b.endDate)||999));
+      if(lockedTasks.length){
+        const d=daysUntil(lockedTasks[0].endDate);
+        const daysToOpen=d-20;
+        kpiBadge.textContent=daysToOpen+'ي';
+        kpiBadge.style.display='inline-block';
+        kpiBadge.style.background='#94a3b8';
+        kpiBadge.title='تفتح بعد '+daysToOpen+' يوم';
+      } else {
+        kpiBadge.style.display='none';
+      }
+    }
   }
 }
 
