@@ -1556,8 +1556,8 @@ function buildSidebar(){
     <div class="sb-sec">إدارة المهام</div>
     <div class="sb-item" data-pg="departments"><i class="fas fa-sitemap"></i> الإدارات</div>
     <div class="sb-item" data-pg="tasks"><i class="fas fa-tasks"></i> كل المهام</div>
-    <div class="sb-item" data-pg="kpi-tasks"><i class="fas fa-chart-line"></i> مهام مؤشرات الدليل حج عام 1447</div>
-    <div class="sb-item" data-pg="kpi-dashboard"><i class="fas fa-tachometer-alt"></i> لوحة مؤشرات الدليل</div>
+    <div class="sb-item" data-pg="kpi-tasks"><i class="fas fa-chart-line"></i> مهام مؤشرات الدليل 1447</div>
+    <div class="sb-item" data-pg="kpi-dashboard"><i class="fas fa-tachometer-alt" style="color:#d1ae37"></i> لوحة مؤشرات الدليل</div>
     <div class="sb-sec">التواصل</div>
     <div class="sb-item" data-pg="announcements"><i class="fas fa-bullhorn"></i> التعاميم <span class="sb-badge" id="sbAnnBadge" style="display:none">0</span></div>
     <div class="sb-item" data-pg="complaints"><i class="fas fa-flag"></i> البلاغات <span class="sb-badge" id="sbComplaintBadge" style="display:none">0</span></div>
@@ -1574,9 +1574,10 @@ function buildSidebar(){
   } else {
     html+=`<div class="sb-sec">الرئيسية</div>
     <div class="sb-item on" data-pg="my-tasks"><i class="fas fa-tasks"></i> مهامي <span class="sb-badge" id="sbMyBadge" style="display:none">0</span></div>
-    <div class="sb-sec">الأداء</div>
-    <div class="sb-item" data-pg="dept-dashboard"><i class="fas fa-th-large"></i> داشبورد إدارتي</div>
-    <div class="sb-item" data-pg="kpi-tasks"><i class="fas fa-chart-line"></i> مهام مؤشرات الدليل حج عام 1447 <span class="sb-badge" id="sbKpiBadge" style="display:none">0</span></div>
+    <div class="sb-sec">مؤشرات الدليل</div>
+    <div class="sb-item" data-pg="dept-dashboard"><i class="fas fa-tachometer-alt"></i> لوحة مؤشرات الدليل <span class="sb-badge" id="sbKpiBadge" style="display:none">0</span></div>
+    <div class="sb-item" data-pg="kpi-tasks"><i class="fas fa-chart-line"></i> مهام مؤشرات 1447</div>
+    <div class="sb-sec">الأداء العام</div>
     <div class="sb-item" data-pg="my-kpi"><i class="fas fa-chart-bar"></i> إحصائيات إدارتي</div>
     <div class="sb-sec">التواصل</div>
     <div class="sb-item" data-pg="announcements"><i class="fas fa-bullhorn"></i> التعاميم <span class="sb-badge" id="sbAnnBadge" style="display:none">0</span></div>
