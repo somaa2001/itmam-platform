@@ -2390,46 +2390,75 @@ async function saveKpiTask(){
   const indicator=document.getElementById('fKpiIndicator').value.trim();
   const dept=document.getElementById('fKpiDept').value;
   if(!title||!indicator){toast('الرجاء ملء الحقول المطلوبة','err');return;}
-  const nid='KPI-'+(Date.now());
-  const fileInput=document.getElementById('fKpiFile');
-  let fileName='',fileUrl='';
-  if(fileInput&&fileInput.files[0]){
-    const file=fileInput.files[0];fileName=file.name;
-    const {data:fd,error:fe}=await db.storage.from('attachments').upload(nid+'/'+file.name,file);
-    if(!fe&&fd){const {data:ud}=db.storage.from('attachments').getPublicUrl(nid+'/'+file.name);fileUrl=ud?.publicUrl||'';}
-  }
   showLoading();
   const criteria=document.getElementById('fKpiCriteria')?.value||'';
   const kpiEndDate=document.getElementById('fKpiEnd')?.value||null;
-  // رفع جميع الملفات
+  const newStatus=document.getElementById('fKpiStatus').value;
+  const newPriority=document.getElementById('fKpiPriority').value;
+  const newDesc=document.getElementById('fKpiDesc').value;
+
+  // رفع الملفات الجديدة
   const kpiFiles=document.getElementById('fKpiFile')?.files||[];
-  let filesData=[];
+  let newFilesData=[];
+  const targetId=currentKpiId||('KPI-'+(Date.now()));
   if(kpiFiles.length>0){
-    showLoading();
     for(const file of kpiFiles){
-      const {data:fd,error:fe}=await db.storage.from('attachments').upload(nid+'/'+file.name,file,{upsert:true});
-      if(!fe&&fd){const {data:ud}=db.storage.from('attachments').getPublicUrl(nid+'/'+file.name);filesData.push({name:file.name,url:ud?.publicUrl||''});}
+      const {data:fd,error:fe}=await db.storage.from('attachments').upload(targetId+'/'+file.name,file,{upsert:true});
+      if(!fe&&fd){const {data:ud}=db.storage.from('attachments').getPublicUrl(targetId+'/'+file.name);newFilesData.push({name:file.name,url:ud?.publicUrl||''});}
     }
-    hideLoading();
-    if(filesData.length>0){fileName=filesData[0].name;fileUrl=filesData[0].url;}
   }
-  const {data,error}=await db.from('kpi_tasks').insert({
-    id:nid,title,indicator,criteria,description:document.getElementById('fKpiDesc').value,
-    priority:document.getElementById('fKpiPriority').value,
-    status:document.getElementById('fKpiStatus').value,
-    department:dept, file_name:fileName, file_url:fileUrl,
-    files_data:filesData,
-    end_date:kpiEndDate,
-    need_support:false,submit_count:0,comments:[]
-  }).select().single();
-  hideLoading();
-  if(!error&&data){
-    kpiTasks.unshift(mapKpiTask(data));
-    hideModal('kpiTaskModal');renderKpiTasks();
-    addNotif('chart-line','b','📊 مهمة مؤشر جديدة: "'+title+'"',nid,'kpi');
-    toast('تمت الإضافة');
-    ['fKpiTitle','fKpiIndicator','fKpiDesc'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
-  } else {toast('خطأ في الإضافة','err');console.error(error);}
+
+  if(currentKpiId){
+    // ── تعديل مهمة موجودة ──
+    const t=kpiTasks.find(t=>t.id===currentKpiId);
+    if(!t){hideLoading();toast('لم يُعثر على المهمة','err');return;}
+    // دمج الملفات القديمة مع الجديدة
+    const oldFiles=t.files&&t.files.length?t.files:(t.file?[{name:t.file,url:t.fileUrl}]:[]);
+    const mergedFiles=[...oldFiles,...newFilesData];
+    const firstFile=mergedFiles.length?mergedFiles[0]:{name:'',url:''};
+    const updateData={
+      title, indicator, criteria,
+      description:newDesc,
+      priority:newPriority,
+      status:newStatus,
+      department:dept,
+      end_date:kpiEndDate,
+      file_name:firstFile.name||null,
+      file_url:firstFile.url||null,
+      files_data:mergedFiles
+    };
+    const {error}=await db.from('kpi_tasks').update(updateData).eq('id',currentKpiId);
+    hideLoading();
+    if(!error){
+      Object.assign(t,{title,indicator,criteria,desc:newDesc,priority:newPriority,
+        status:newStatus,dept,endDate:kpiEndDate,
+        file:firstFile.name,fileUrl:firstFile.url,files:mergedFiles});
+      hideModal('kpiTaskModal');currentKpiId=null;renderKpiTasks();
+      toast('تم التعديل ✅');
+    } else {toast('خطأ في التعديل','err');console.error(error);}
+  } else {
+    // ── إضافة مهمة جديدة ──
+    const firstFile=newFilesData.length?newFilesData[0]:{name:'',url:''};
+    const {data,error}=await db.from('kpi_tasks').insert({
+      id:targetId, title, indicator, criteria,
+      description:newDesc,
+      priority:newPriority,
+      status:newStatus,
+      department:dept,
+      file_name:firstFile.name||null,
+      file_url:firstFile.url||null,
+      files_data:newFilesData,
+      end_date:kpiEndDate,
+      need_support:false, submit_count:0, comments:[]
+    }).select().single();
+    hideLoading();
+    if(!error&&data){
+      kpiTasks.unshift(mapKpiTask(data));
+      hideModal('kpiTaskModal');renderKpiTasks();
+      addNotif('chart-line','b','📊 مهمة مؤشر جديدة: "'+title+'"',targetId,'kpi');
+      toast('تمت الإضافة ✅');
+    } else {toast('خطأ في الإضافة','err');console.error(error);}
+  }
 }
 
 async function loadKpiTasks(){
@@ -2624,8 +2653,8 @@ function viewKpiTask(id){
     (t.desc?'<div style="margin-bottom:10px"><div class="view-label">الوصف</div><div class="view-val">'+t.desc+'</div></div>':'')+
     // عرض المرفقات
     (()=>{
-      if(!t.file&&(!t.files||!t.files.length)) return '';
-      const allFiles=t.files&&t.files.length?t.files:[{name:t.file,url:t.fileUrl}];
+      const allFiles=(t.files&&t.files.length)?t.files:(t.file&&t.fileUrl?[{name:t.file,url:t.fileUrl}]:[]);
+      if(!allFiles.length) return '';
       return '<div style="margin-top:10px"><div class="view-label">📎 المرفقات ('+allFiles.length+')</div>'+
         '<div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:6px">'+
         allFiles.map(f=>'<a href="'+f.url+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#eff6ff;color:#2563eb;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none"><i class="fas fa-paperclip"></i>'+f.name+'</a>').join('')+
@@ -2709,8 +2738,25 @@ function editKpiTask(id){
   document.getElementById('fKpiDesc').value=t.desc;
   document.getElementById('fKpiPriority').value=t.priority;
   document.getElementById('fKpiStatus').value=t.status;
+  if(document.getElementById('fKpiCriteria'))document.getElementById('fKpiCriteria').value=t.criteria||'';
+  if(document.getElementById('fKpiEnd'))document.getElementById('fKpiEnd').value=t.endDate||'';
   document.getElementById('fKpiDept').value=t.dept||'';
+  // عرض الملفات الحالية
+  const existingFiles=t.files&&t.files.length?t.files:(t.file?[{name:t.file,url:t.fileUrl}]:[]);
+  const listEl=document.getElementById('kpiFilesList');
+  if(listEl){
+    listEl.innerHTML=existingFiles.length?
+      '<div style="font-size:11px;color:#64748b;margin-bottom:3px">المرفقات الحالية:</div>'+
+      existingFiles.map(f=>'<a href="'+f.url+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;text-decoration:none">'+
+        '<i class="fas fa-paperclip" style="font-size:10px"></i>'+f.name+'</a>').join('')
+      :'';
+  }
+  const fnEl=document.getElementById('kpiFileName');
+  if(fnEl)fnEl.textContent=existingFiles.length?'إضافة ملفات جديدة (اختياري)':'اضغط لرفع ملفات';
+  const fileInput=document.getElementById('fKpiFile');
+  if(fileInput)fileInput.value='';
   currentKpiId=id;
+  fillSelects();
   showModal('kpiTaskModal');
 }
 
