@@ -1667,7 +1667,13 @@ function navigate(pg){
 
 function fillSelects(){
   const opts=DEPTS.map(d=>'<option>'+d.name+'</option>').join('');
-  ['fDept','fUDept','fKpiDept'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
+  // fDept يحتوي على "للكل" للأدمن والمشرف
+  const deptEl=document.getElementById('fDept');
+  if(deptEl){
+    const allOpt=isAdminOrSup()?'<option value="الكل">🌐 للكل — جميع الإدارات</option>':'';
+    deptEl.innerHTML=allOpt+opts;
+  }
+  ['fUDept','fKpiDept'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
 }
 function fillComplaintDeptSelect(){
   const opts=DEPTS.map(d=>'<option>'+d.name+'</option>').join('');
@@ -1850,7 +1856,6 @@ async function saveTask(){
         toast('تم التحديث');
       }
     } else {
-      const nid='HM-'+(Date.now());
       const dept=document.getElementById('fDept').value;
       const schedType=document.getElementById('fScheduleType').value;
       const fileInput=document.getElementById('fFile');
@@ -1858,35 +1863,41 @@ async function saveTask(){
       if(fileInput&&fileInput.files[0]){
         const file=fileInput.files[0];
         fileName=file.name;
-        const filePath=nid+'/'+file.name;
+        const basePath='HM-'+(Date.now())+'/'+file.name;
         showLoading();
-        const {data:fData,error:fErr}=await db.storage.from('attachments').upload(filePath,file);
+        const {data:fData,error:fErr}=await db.storage.from('attachments').upload(basePath,file);
         if(!fErr&&fData){
-          const {data:urlData}=db.storage.from('attachments').getPublicUrl(filePath);
+          const {data:urlData}=db.storage.from('attachments').getPublicUrl(basePath);
           fileUrl=urlData?.publicUrl||'';
         }
       }
-      const newTask={
-        id:nid, title, desc:document.getElementById('fDesc').value,
-        required:document.getElementById('fRequired').value,
-        status:document.getElementById('fStatus').value,
-        priority:document.getElementById('fPriority').value,
-        dept, scheduleType:schedType, published:schedType==='immediate',
-        scheduleDate:document.getElementById('fSchedDate')?.value||null,
-        scheduleTime:document.getElementById('fSchedTime')?.value||null,
-        repeat:document.getElementById('fRepeat')?.value||null,
-        start:document.getElementById('fStart').value,
-        end:document.getElementById('fEnd').value,
-        file:fileName, fileUrl:fileUrl, comments:[], isNew:true, needSupport:false,
-        submitCount:0, submitTime:null, approveTime:null, rejectTime:null
-      };
-      const {error}=await db.from('tasks').insert(taskToDb(newTask));
-      if(error){toast('خطأ في الإضافة','err');console.error(error);}
-      else{
-        tasks.unshift(newTask);
-        addNotif('plus-circle','g','📋 مهمة جديدة: "'+title+'" → '+dept,nid,'task');
-        toast('تمت إضافة المهمة');
+      // إذا اختار "الكل" — أنشئ مهمة لكل إدارة
+      const targetDepts=(dept==='الكل')?DEPTS.map(d=>d.name):[dept];
+      let addedCount=0;
+      for(const d of targetDepts){
+        const nid='HM-'+(Date.now())+'-'+Math.floor(Math.random()*9999);
+        const newTask={
+          id:nid, title, desc:document.getElementById('fDesc').value,
+          required:document.getElementById('fRequired').value,
+          status:document.getElementById('fStatus').value,
+          priority:document.getElementById('fPriority').value,
+          dept:d, scheduleType:schedType, published:schedType==='immediate',
+          scheduleDate:document.getElementById('fSchedDate')?.value||null,
+          scheduleTime:document.getElementById('fSchedTime')?.value||null,
+          repeat:document.getElementById('fRepeat')?.value||null,
+          start:document.getElementById('fStart').value,
+          end:document.getElementById('fEnd').value,
+          file:fileName, fileUrl:fileUrl, comments:[], isNew:true, needSupport:false,
+          submitCount:0, submitTime:null, approveTime:null, rejectTime:null
+        };
+        const {error}=await db.from('tasks').insert(taskToDb(newTask));
+        if(!error){tasks.unshift(newTask);addedCount++;}
       }
+      if(addedCount>0){
+        addNotif('plus-circle','g','📋 مهمة جديدة: "'+title+'"'+(dept==='الكل'?' → جميع الإدارات ('+addedCount+')'
+          :' → '+dept),'','task');
+        toast(dept==='الكل'?'تمت إضافة المهمة لجميع الإدارات ('+addedCount+')':'تمت إضافة المهمة');
+      }else{toast('خطأ في الإضافة','err');}
     }
     hideModal('taskModal'); refresh();
   } catch(e){toast('خطأ في الاتصال','err');console.error(e);}
