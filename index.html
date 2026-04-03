@@ -1838,13 +1838,13 @@ function openTaskModal(id){
     document.getElementById('fStart').value=t.start||'';
     document.getElementById('fEnd').value=t.end||'';
     // تحميل الملفات الحالية
-    // قراءة كل الملفات الموجودة
+    // قراءة كل الملفات من JSON
     editingFiles=[];
     try{
       var pf=JSON.parse(t.fileUrl||'[]');
-      if(Array.isArray(pf)&&pf.length) editingFiles=pf;
-      else if(t.file&&t.fileUrl) editingFiles=[{name:t.file,url:t.fileUrl}];
-    }catch(e){if(t.file&&t.fileUrl) editingFiles=[{name:t.file,url:t.fileUrl}];}
+      if(Array.isArray(pf)&&pf.length) editingFiles=pf.slice(); // نسخة للتعديل
+      else if(t.file&&t.fileUrl) editingFiles=[{name:t.file,url:t.fileUrl,addedBy:'admin'}];
+    }catch(e){if(t.file&&t.fileUrl) editingFiles=[{name:t.file,url:t.fileUrl,addedBy:'admin'}];}
     renderEditFilesList('taskEditFilesList');
   } else {
     editingFiles=[];
@@ -1868,95 +1868,93 @@ async function saveTask(){
   if(!title){toast('الرجاء إدخال عنوان المهمة','err');return;}
   showLoading();
   try{
-    if(currentTaskId){
-      const t=tasks.find(t=>t.id===currentTaskId);
-      const os=t.status;
-      // استخدام الملفات المحررة
-      var keepFile=editingFiles.length?editingFiles[0].name:(t.file||'');
-      var keepUrl=editingFiles.length?editingFiles[0].url:(t.fileUrl||'');
-      // إذا رُفع ملف جديد يُضاف للقائمة
-      var newFileInput=document.getElementById('fFile');
-      if(newFileInput&&newFileInput.files[0]){
-        var nf=newFileInput.files[0];
-        var sfn=sanitizeFileName(nf.name);
-        var npath=t.id+'/'+sfn;
-        var {data:nfd,error:nfe}=await db.storage.from('attachments').upload(npath,nf,{upsert:true});
-        if(!nfe&&nfd){
-          var {data:nud}=db.storage.from('attachments').getPublicUrl(npath);
-          var nurl=nud?.publicUrl||'https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+npath;
-          editingFiles.push({name:nf.name,url:nurl});
-          keepFile=nf.name;keepUrl=nurl;
-        }
+    // ─── رفع ملف جديد إن وُجد ───
+    const fileInput=document.getElementById('fFile');
+    const hasNewFile=fileInput&&fileInput.files&&fileInput.files[0];
+    if(hasNewFile){
+      const file=fileInput.files[0];
+      const uploadId=currentTaskId||('HM-'+Date.now());
+      const safeName=sanitizeFileName(file.name);
+      const uploadPath=uploadId+'/admin/'+safeName;
+      const {data:fd,error:fe}=await db.storage.from('attachments').upload(uploadPath,file,{upsert:true});
+      if(fe){hideLoading();toast('خطأ في رفع الملف: '+fe.message,'err');return;}
+      if(fd){
+        const {data:ud}=db.storage.from('attachments').getPublicUrl(uploadPath);
+        let furl=ud?.publicUrl||'';
+        if(!furl.includes('supabase.co')) furl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+uploadPath;
+        editingFiles.push({name:file.name,url:furl,addedBy:'admin'});
       }
+    }
+
+    if(currentTaskId){
+      // ─── تعديل مهمة ───
+      const t=tasks.find(t=>t.id===currentTaskId);
+      if(!t){hideLoading();toast('لم تُوجد المهمة','err');return;}
+      const os=t.status;
+      // الملفات = editingFiles (ما تبقى بعد الحذف + الجديدة)
+      const allFiles=editingFiles;
+      const firstFile=allFiles.length?allFiles[0]:{name:'',url:''};
+      // حفظ الملفات كـ JSON
+      const filesJson=allFiles.length?JSON.stringify(allFiles):null;
       Object.assign(t,{
-        title, desc:document.getElementById('fDesc').value,
+        title,
+        desc:document.getElementById('fDesc').value,
         required:document.getElementById('fRequired').value,
         status:document.getElementById('fStatus').value,
         priority:document.getElementById('fPriority').value,
         dept:document.getElementById('fDept').value,
-        scheduleType:'immediate', start:document.getElementById('fStart').value,
+        scheduleType:'immediate',
+        published:true,
+        start:document.getElementById('fStart').value,
         end:document.getElementById('fEnd').value,
-        file:keepFile, fileUrl:keepUrl
+        file:firstFile.name,
+        fileUrl:filesJson||firstFile.url
       });
       const {error}=await db.from('tasks').update(taskToDb(t)).eq('id',currentTaskId);
-      if(error){toast('خطأ في التحديث','err');console.error(error);}
+      if(error){toast('خطأ في التحديث: '+error.message,'err');console.error(error);}
       else{
         if(os!==t.status) addNotif('edit','y','تم تغيير حالة "'+title+'" إلى: '+SM[t.status]);
-        toast('تم التحديث');
+        toast('تم التحديث ✅');
       }
+
     } else {
+      // ─── إضافة مهمة جديدة ───
       const dept=document.getElementById('fDept').value;
       const schedType=document.getElementById('fScheduleType').value;
-      const fileInput=document.getElementById('fFile');
-      let fileName='', fileUrl='';
-      if(fileInput&&fileInput.files[0]){
-        const file=fileInput.files[0];
-        fileName=file.name;
-        const basePath='HM-'+(Date.now())+'/'+file.name;
-        showLoading();
-        const safeName=sanitizeFileName(file.name);
-        const safeBasePath=nid+'/'+safeName;
-        const {data:fData,error:fErr}=await db.storage.from('attachments').upload(safeBasePath,file,{upsert:true});
-        if(fErr){console.error('Upload error:',fErr);toast('خطأ رفع الملف: '+fErr.message,'err');}
-        else if(fData){
-          const {data:urlData}=db.storage.from('attachments').getPublicUrl(safeBasePath);
-          fileUrl=urlData?.publicUrl||'';
-          if(!fileUrl.includes('supabase.co')){
-            fileUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+safeBasePath;
-          }
-          fileName=file.name; // نحتفظ بالاسم الأصلي للعرض
-        }
-      }
-      // إذا اختار "الكل" — أنشئ مهمة لكل إدارة
+      const firstFile=editingFiles.length?editingFiles[0]:{name:'',url:''};
+      const filesJson=editingFiles.length?JSON.stringify(editingFiles):null;
       const targetDepts=(dept==='الكل')?DEPTS.map(d=>d.name):[dept];
       let addedCount=0;
       for(const d of targetDepts){
         const nid='HM-'+(Date.now())+'-'+Math.floor(Math.random()*9999);
         const newTask={
-          id:nid, title, desc:document.getElementById('fDesc').value,
+          id:nid, title,
+          desc:document.getElementById('fDesc').value,
           required:document.getElementById('fRequired').value,
           status:document.getElementById('fStatus').value,
           priority:document.getElementById('fPriority').value,
-          dept:d, scheduleType:schedType, published:schedType==='immediate',
+          dept:d, scheduleType:schedType,
+          published:schedType==='immediate',
           scheduleDate:document.getElementById('fSchedDate')?.value||null,
           scheduleTime:document.getElementById('fSchedTime')?.value||null,
           repeat:document.getElementById('fRepeat')?.value||null,
           start:document.getElementById('fStart').value,
           end:document.getElementById('fEnd').value,
-          file:fileName, fileUrl:fileUrl, comments:[], isNew:true, needSupport:false,
+          file:firstFile.name,
+          fileUrl:filesJson||firstFile.url,
+          comments:[], isNew:true, needSupport:false,
           submitCount:0, submitTime:null, approveTime:null, rejectTime:null
         };
         const {error}=await db.from('tasks').insert(taskToDb(newTask));
         if(!error){tasks.unshift(newTask);addedCount++;}
       }
       if(addedCount>0){
-        addNotif('plus-circle','g','📋 مهمة جديدة: "'+title+'"'+(dept==='الكل'?' → جميع الإدارات ('+addedCount+')'
-          :' → '+dept),'','task');
-        toast(dept==='الكل'?'تمت إضافة المهمة لجميع الإدارات ('+addedCount+')':'تمت إضافة المهمة');
-      }else{toast('خطأ في الإضافة','err');}
+        addNotif('plus-circle','g','📋 مهمة جديدة: "'+title+'"'+(dept==='الكل'?' → جميع الإدارات ('+addedCount+')':' → '+dept),'','task');
+        toast(dept==='الكل'?'تمت الإضافة لجميع الإدارات ('+addedCount+')':'تمت الإضافة ✅');
+      } else {toast('خطأ في الإضافة','err');}
     }
     hideModal('taskModal'); refresh();
-  } catch(e){toast('خطأ في الاتصال','err');console.error(e);}
+  } catch(e){toast('خطأ في الاتصال: '+e.message,'err');console.error(e);}
   hideLoading();
 }
 
@@ -2025,12 +2023,23 @@ async function submitTask(){
   t.submitCount=(t.submitCount||0)+1;
   t.submitTime=nowStamp();
   t.status='review';
-  if(fileName){t.file=fileName;t.fileUrl=fileUrl;}
+  // إضافة ملف التسليم في التعليقات — لا نُلغي ملفات الأدمن
   const noteText=hasNote?noteInp.value.trim():'';
   if(noteText) t.comments.push({author:currentUser.name,txt:'📝 ملاحظة التسليم: '+noteText,time:t.submitTime,type:'note'});
-  t.comments.push({author:currentUser.name,txt:'📤 تم تسليم المهمة | وقت التسليم: '+t.submitTime+(fileName?' | المرفق: '+fileName:''),time:t.submitTime,type:'submit'});
+  t.comments.push({
+    author:currentUser.name,
+    txt:'📤 تم تسليم المهمة | وقت التسليم: '+t.submitTime+(fileName?' | المرفق: '+fileName:''),
+    time:t.submitTime,type:'submit',
+    submitFile:fileName?{name:fileName,url:fileUrl}:null
+  });
   showLoading();
-  const {error}=await db.from('tasks').update(taskToDb(t)).eq('id',currentTaskId);
+  // نحفظ فقط submit_count و submit_time و status و comments — لا نمس file_url
+  const {error}=await db.from('tasks').update({
+    submit_count:t.submitCount,
+    submit_time:t.submitTime,
+    status:t.status,
+    comments:t.comments
+  }).eq('id',currentTaskId);
   hideLoading();
   if(!error){hideModal('viewModal');addNotif('check-circle','g','📤 تسليم: "'+t.title+'"',currentTaskId,'task');toast('تم التسليم — قيد المراجعة ✅');refresh();}
   else{toast('خطأ','err');console.error(error);}
@@ -2094,7 +2103,15 @@ function viewTask(id){
     '</div>'+
     '<div style="margin-bottom:10px"><div class="view-label">الوصف</div><div class="view-val" style="line-height:1.7">'+t.desc+'</div></div>'+
     (t.required?'<div><div class="view-label">المطلوب</div><div class="view-val" style="line-height:1.7">'+t.required+'</div></div>':'')+
-    (t.file?'<div style="margin-top:12px"><div class="view-label" style="margin-bottom:6px">📎 المرفق</div>'+renderFileLink(t.file,t.fileUrl)+'</div>':'');
+    (()=>{
+      var vFiles=[];
+      try{var p=JSON.parse(t.fileUrl||'[]');if(Array.isArray(p))vFiles=p;}catch(e){if(t.file&&t.fileUrl)vFiles=[{name:t.file,url:t.fileUrl}];}
+      if(!vFiles.length&&t.file&&t.fileUrl)vFiles=[{name:t.file,url:t.fileUrl}];
+      if(!vFiles.length)return '';
+      return '<div style="margin-top:12px"><div class="view-label" style="margin-bottom:6px">📎 مرفقات الأدمن ('+vFiles.length+')</div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:7px">'+
+        vFiles.map(function(f){return renderFileLink(f.name,f.url);}).join('')+'</div></div>';
+    })();
   renderComments(t);
   const cmtAv=document.getElementById('cmtAv');
   if(cmtAv&&currentUser) cmtAv.textContent=currentUser.name[0];
@@ -2693,29 +2710,22 @@ async function submitKpiTask(id,fileInput,textInput){
     }
     hideLoading();
   }
-  if(hasText) t.comments.push({author:currentUser.name,txt:'📝 ملاحظة التسليم: '+textInput.value.trim(),time:nowStamp()});
   t.submitCount=(t.submitCount||0)+1;
   t.submitTime=nowStamp();t.status='review';
-  // دمج ملف التسليم مع الملفات الموجودة (لا نحذف ملفات الأدمن)
-  if(fileName&&fileUrl){
-    // قراءة الملفات الحالية
-    var existingFiles=[];
-    try{
-      if(t.fileUrl&&t.fileUrl.startsWith('[')) existingFiles=JSON.parse(t.fileUrl);
-      else if(t.file&&t.fileUrl) existingFiles=[{name:t.file,url:t.fileUrl}];
-    }catch(e){}
-    existingFiles.push({name:fileName,url:fileUrl,submittedBy:currentUser.name});
-    t.files=existingFiles;
-    t.file=existingFiles[0].name;
-    t.fileUrl=JSON.stringify(existingFiles);
-  }
+  // ملف اليوزر يُضاف للتعليقات فقط — ملفات الأدمن تبقى ثابتة
+  if(hasText) t.comments.push({author:currentUser.name,txt:'📝 ملاحظة: '+textInput.value.trim(),time:t.submitTime,type:'note'});
+  t.comments.push({
+    author:currentUser.name,
+    txt:'📤 تم التسليم | '+t.submitTime+(fileName?' | الملف: '+fileName:''),
+    time:t.submitTime, type:'submit',
+    submitFile:fileName?{name:fileName,url:fileUrl,by:currentUser.name}:null
+  });
   showLoading();
+  // نحفظ فقط submit_count و comments — لا نُعدّل file_url الخاص بالأدمن
   await db.from('kpi_tasks').update({
     submit_count:t.submitCount,
     submit_time:t.submitTime,
     status:'review',
-    file_name:t.file||null,
-    file_url:t.fileUrl||null,
     comments:t.comments
   }).eq('id',id);
   hideLoading();
@@ -2794,7 +2804,15 @@ function renderKpiComments(t){
   }
   // comments
   if(!t.comments||!t.comments.length){html+='<div style="font-size:12px;color:var(--muted)">لا توجد تعليقات</div>';}
-  else{html+=t.comments.map(c=>'<div class="cmt-item"><div class="cmt-av">'+c.author[0]+'</div><div style="flex:1"><div style="font-size:10.5px;color:var(--muted)"><b>'+c.author+'</b> • '+c.time+'</div><div style="font-size:12.5px">'+c.txt+'</div></div></div>').join('');}
+  else{html+=t.comments.map(function(c){
+  var fileHtml='';
+  if(c.submitFile&&c.submitFile.name){
+    fileHtml='<div style="margin-top:5px">'+renderFileLink(c.submitFile.name,c.submitFile.url)+'</div>';
+  }
+  return '<div class="cmt-item"><div class="cmt-av">'+c.author[0]+'</div>'+
+    '<div style="flex:1"><div style="font-size:10.5px;color:var(--muted)"><b>'+c.author+'</b> • '+c.time+'</div>'+
+    '<div style="font-size:12.5px">'+c.txt+'</div>'+fileHtml+'</div></div>';
+}).join('');}
   area.innerHTML=html;
 }
 
