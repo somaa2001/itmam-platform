@@ -2376,8 +2376,17 @@ function mapKpiTask(r){
     desc:r.description||'', priority:r.priority||'normal',
     status:r.status||'review', dept:r.department||'',
     startDate:r.start_date||null, endDate:r.end_date||null,
-    file:r.file_name||'', fileUrl:r.file_url||'',
-    files:r.files_data||[],
+    file:r.file_name||'', fileUrl:'',
+    files:(function(){
+      if(!r.file_url) return [];
+      try{
+        var parsed=JSON.parse(r.file_url);
+        if(Array.isArray(parsed)) return parsed;
+        return r.file_name?[{name:r.file_name,url:r.file_url}]:[];
+      }catch(e){
+        return r.file_name&&r.file_url?[{name:r.file_name,url:r.file_url}]:[];
+      }
+    })(),
     needSupport:r.need_support||false, submitCount:r.submit_count||0,
     submitTime:r.submit_time||null, approveTime:r.approve_time||null,
     rejectTime:r.reject_time||null,
@@ -2423,16 +2432,17 @@ async function saveKpiTask(){
       status:newStatus,
       department:dept,
       end_date:kpiEndDate,
-      file_name:firstFile.name||null,
-      file_url:firstFile.url||null,
-      files_data:mergedFiles
+      file_name:mergedFiles.length?mergedFiles[0].name:null,
+      file_url:mergedFiles.length?JSON.stringify(mergedFiles):null,
     };
     const {error}=await db.from('kpi_tasks').update(updateData).eq('id',currentKpiId);
     hideLoading();
     if(!error){
       Object.assign(t,{title,indicator,criteria,desc:newDesc,priority:newPriority,
         status:newStatus,dept,endDate:kpiEndDate,
-        file:firstFile.name,fileUrl:firstFile.url,files:mergedFiles});
+        file:mergedFiles.length?mergedFiles[0].name:'',
+        fileUrl:mergedFiles.length?mergedFiles[0].url:'',
+        files:mergedFiles});
       hideModal('kpiTaskModal');currentKpiId=null;renderKpiTasks();
       toast('تم التعديل ✅');
     } else {toast('خطأ في التعديل','err');console.error(error);}
@@ -2445,9 +2455,8 @@ async function saveKpiTask(){
       priority:newPriority,
       status:newStatus,
       department:dept,
-      file_name:firstFile.name||null,
-      file_url:firstFile.url||null,
-      files_data:newFilesData,
+      file_name:newFilesData.length?newFilesData[0].name:null,
+      file_url:newFilesData.length?JSON.stringify(newFilesData):null,
       end_date:kpiEndDate,
       need_support:false, submit_count:0, comments:[]
     }).select().single();
@@ -2718,10 +2727,11 @@ async function uploadKpiFile(id,input){
   const oldFiles=(t.files&&t.files.length)?t.files:(t.file&&t.fileUrl?[{name:t.file,url:t.fileUrl}]:[]);
   const mergedFiles=[...oldFiles,...newFiles];
   // تحديث في DB
+  // نخزن كل الملفات في file_url كـ JSON (لتجنب مشكلة files_data)
+  const filesJson=JSON.stringify(mergedFiles);
   const {error}=await db.from('kpi_tasks').update({
     file_name:mergedFiles[0].name,
-    file_url:mergedFiles[0].url,
-    files_data:mergedFiles
+    file_url:filesJson
   }).eq('id',id);
   if(!error){
     t.file=mergedFiles[0].name;
