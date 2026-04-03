@@ -1881,16 +1881,17 @@ async function saveTask(){
         fileName=file.name;
         const basePath='HM-'+(Date.now())+'/'+file.name;
         showLoading();
-        const {data:fData,error:fErr}=await db.storage.from('attachments').upload(basePath,file,{upsert:true});
+        const safeName=sanitizeFileName(file.name);
+        const safeBasePath=nid+'/'+safeName;
+        const {data:fData,error:fErr}=await db.storage.from('attachments').upload(safeBasePath,file,{upsert:true});
         if(fErr){console.error('Upload error:',fErr);toast('خطأ رفع الملف: '+fErr.message,'err');}
         else if(fData){
-          const {data:urlData}=db.storage.from('attachments').getPublicUrl(basePath);
+          const {data:urlData}=db.storage.from('attachments').getPublicUrl(safeBasePath);
           fileUrl=urlData?.publicUrl||'';
-          // تأكد أن URL صحيح وليس رابط الموقع
-          if(!fileUrl.includes('supabase.co')&&!fileUrl.includes('supabase.in')){
-            fileUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+basePath;
+          if(!fileUrl.includes('supabase.co')){
+            fileUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+safeBasePath;
           }
-          console.log('File URL:',fileUrl);
+          fileName=file.name; // نحتفظ بالاسم الأصلي للعرض
         }
       }
       // إذا اختار "الكل" — أنشئ مهمة لكل إدارة
@@ -1984,6 +1985,7 @@ async function submitTask(){
       const {data:ud}=db.storage.from('attachments').getPublicUrl(taskSubmitPath);
       fileUrl=ud?.publicUrl||'';
       if(!fileUrl||!fileUrl.includes('supabase'))fileUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+taskSubmitPath;
+      fileName=file.name; // الاسم الأصلي للعرض
     }
     hideLoading();
   }
@@ -2437,13 +2439,13 @@ async function saveKpiTask(){
   const targetId=currentKpiId||('KPI-'+(Date.now()));
   if(kpiFiles.length>0){
     for(const file of kpiFiles){
-      const filePath2=targetId+'/'+sanitizeFileName(file.name);
-      const {data:fd,error:fe}=await db.storage.from('attachments').upload(filePath2,file,{upsert:true});
+      const safePath2=targetId+'/'+sanitizeFileName(file.name);
+      const {data:fd,error:fe}=await db.storage.from('attachments').upload(safePath2,file,{upsert:true});
       if(!fe&&fd){
-        const {data:ud}=db.storage.from('attachments').getPublicUrl(filePath2);
+        const {data:ud}=db.storage.from('attachments').getPublicUrl(safePath2);
         var furl=ud?.publicUrl||'';
-        if(!furl||!furl.includes('supabase'))furl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+filePath2;
-        newFilesData.push({name:file.name,url:furl});
+        if(!furl||!furl.includes('supabase'))furl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+safePath2;
+        newFilesData.push({name:file.name,url:furl}); // name=الاسم الأصلي
       }
     }
   }
@@ -2655,6 +2657,7 @@ async function submitKpiTask(id,fileInput,textInput){
       const {data:ud}=db.storage.from('attachments').getPublicUrl(submitPath);
       fileUrl=ud?.publicUrl||'';
       if(!fileUrl||!fileUrl.includes('supabase'))fileUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+submitPath;
+      fileName=file.name; // الاسم الأصلي
     }
     hideLoading();
   }
@@ -2770,18 +2773,16 @@ async function uploadKpiFile(id,input){
   // رفع جميع الملفات المختارة
   const newFiles=[];
   for(const file of input.files){
-    const path=id+'/'+Date.now()+'_'+sanitizeFileName(file.name);
-    console.log('Uploading:',path);
-    const {data:fd,error:fe}=await db.storage.from('attachments').upload(path,file,{upsert:true});
-    if(fe){console.error('KPI upload error:',fe);toast('خطأ: '+fe.message,'err');}
+    const safePath=id+'/'+sanitizeFileName(file.name);
+    const {data:fd,error:fe}=await db.storage.from('attachments').upload(safePath,file,{upsert:true});
+    if(fe){toast('خطأ: '+fe.message,'err');}
     else if(fd){
-      const {data:ud}=db.storage.from('attachments').getPublicUrl(path);
+      const {data:ud}=db.storage.from('attachments').getPublicUrl(safePath);
       var url=ud?.publicUrl||'';
       if(!url||!url.includes('supabase')){
-        url='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+path;
+        url='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+safePath;
       }
-      console.log('KPI URL:',url);
-      newFiles.push({name:file.name,url:url});
+      newFiles.push({name:file.name,url:url}); // name=الاسم الأصلي, url=رابط الملف
     }
   }
   if(!newFiles.length){hideLoading();toast('فشل رفع الملف — تحقق من Console للتفاصيل','err');return;}
@@ -3626,11 +3627,11 @@ function renderDeptDashboard(){
 // ══════════════════════════════════════════════
 // ── صلاحيات المشرف ──
 function sanitizeFileName(name){
-  // إزالة المسافات والأحرف الخاصة من اسم الملف
-  var ext = name.split('.').pop();
-  var base = name.slice(0, -(ext.length+1));
-  var clean = base.replace(/[^a-zA-Z0-9؀-ۿ._-]/g,'_').replace(/_{2,}/g,'_');
-  return clean + '.' + ext;
+  // استخدام اسم عشوائي بالكامل + امتداد الملف الأصلي فقط
+  var parts = name.split('.');
+  var ext = parts.length > 1 ? parts.pop().replace(/[^a-zA-Z0-9]/g,'') : 'bin';
+  var random = Date.now() + '_' + Math.random().toString(36).slice(2,8);
+  return random + '.' + ext;
 }
 
 function fileIcon(name){
