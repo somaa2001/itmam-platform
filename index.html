@@ -1131,7 +1131,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
       </label>
     </div>
     <div class="modal-foot">
-      <button class="btn-ok" id="btnSaveTask">إضافة المهمة</button>
+      <button class="btn-ok" id="btnSaveTask" onclick="saveTask()">إضافة المهمة</button>
       <button class="btn-cc" onclick="hideModal('taskModal')">إلغاء</button>
     </div>
   </div>
@@ -2070,7 +2070,7 @@ function refresh(){
   renderDepts();
   if(currentDept) renderDeptCards(currentFilter||'all');
   renderAllCards('all');
-  if(currentUser?.role!=='admin') renderMyTasks(currentMyFilter||'all');
+  if(!isAdminOrSup()) renderMyTasks(currentMyFilter||'all');
   updateStats(); updateSideBadges();
 }
 
