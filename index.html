@@ -1072,6 +1072,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
     <div class="ig"><label>عنوان المهمة</label><input type="text" id="fTitle" placeholder="أدخل عنوان المهمة"></div>
     <div class="ig"><label>الوصف</label><textarea id="fDesc" placeholder="أدخل وصف المهمة"></textarea></div>
     <div class="ig"><label>المطلوب</label><input type="text" id="fRequired" placeholder="أدخل المطلوب"></div>
+    <div class="ig"><label>عدد المحاولات المسموحة</label><input type="number" id="fMaxSubmits" min="1" max="10" value="2" style="width:100px"></div>
     <div class="ig-row">
       <div class="ig"><label>الحالة</label>
         <select id="fStatus">
@@ -1221,6 +1222,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
       <div class="ig"><label>الحالة</label><select id="fKpiStatus"><option value="review">قيد المراجعة</option><option value="accepted">مقبولة</option><option value="completed">مكتملة</option><option value="rejected">مرفوضة</option></select></div>
       <div class="ig"><label>الأولوية</label><select id="fKpiPriority"><option value="urgent">🔴 مستعجلة</option><option value="normal" selected>🟢 عادية</option><option value="low">🔵 غير مستعجلة</option></select></div>
     </div>
+    <div class="ig"><label>عدد المحاولات المسموحة</label><input type="number" id="fKpiMaxSubmits" min="1" max="10" value="2" style="width:100px"></div>
     <div class="ig"><label>تاريخ انتهاء التسليم</label><input type="date" id="fKpiEnd"></div>
     <div class="ig">
       <label>مرفقات (يمكن إضافة أكثر من ملف)</label>
@@ -1421,6 +1423,7 @@ function mapTask(r){
     start:r.start_date||'', end:r.end_date||'', file:r.file_name||'',
     fileUrl:r.file_url||'',
     needSupport:r.need_support||false, submitCount:r.submit_count||0,
+    maxSubmits:r.max_submits||2,
     submitTime:r.submit_time||null, approveTime:r.approve_time||null,
     rejectTime:r.reject_time||null, isNew:r.is_new||false,
     published:r.published!==false,
@@ -1435,7 +1438,7 @@ function taskToDb(t){
     schedule_time:t.scheduleTime||null, repeat_type:t.repeat||null,
     start_date:t.start||null, end_date:t.end||null, file_name:t.file||null,
     file_url:t.fileUrl||null,
-    need_support:t.needSupport||false, submit_count:t.submitCount||0,
+    need_support:t.needSupport||false, submit_count:t.submitCount||0, max_submits:t.maxSubmits||2,
     submit_time:t.submitTime||null, approve_time:t.approveTime||null,
     reject_time:t.rejectTime||null, is_new:t.isNew||false,
     published:t.published!==false, comments:t.comments||[]
@@ -1846,6 +1849,7 @@ function openTaskModal(id){
     document.getElementById('fDept').value=t.dept;
     document.getElementById('fStart').value=t.start||'';
     document.getElementById('fEnd').value=t.end||'';
+    const msEl=document.getElementById('fMaxSubmits');if(msEl)msEl.value=t.maxSubmits||2;
     // تحميل الملفات الحالية
     // قراءة كل الملفات من JSON
     editingFiles=[];
@@ -1905,6 +1909,7 @@ async function saveTask(){
       const firstFile=allFiles.length?allFiles[0]:{name:'',url:''};
       // حفظ الملفات كـ JSON
       const filesJson=allFiles.length?JSON.stringify(allFiles):null;
+      const msVal=parseInt(document.getElementById('fMaxSubmits')?.value)||2;
       Object.assign(t,{
         title,
         desc:document.getElementById('fDesc').value,
@@ -1914,6 +1919,7 @@ async function saveTask(){
         dept:document.getElementById('fDept').value,
         scheduleType:'immediate',
         published:true,
+        maxSubmits:msVal,
         start:document.getElementById('fStart').value,
         end:document.getElementById('fEnd').value,
         file:firstFile.name,
@@ -2002,7 +2008,8 @@ async function changeStatus(status){
 
 async function submitTask(){
   const t=tasks.find(t=>t.id===currentTaskId);
-  if((t.submitCount||0)>=2){toast('انتهت محاولات التسليم (2/2)','err');return;}
+  var maxS=t.maxSubmits||2;
+  if((t.submitCount||0)>=maxS){toast('انتهت محاولات التسليم ('+maxS+'/'+maxS+')','err');return;}
   // التحقق من وجود ملف أو نص
   const fileInp=document.getElementById('submitFileInp');
   const noteInp=document.getElementById('submitNote');
@@ -2135,7 +2142,7 @@ function viewTask(id){
     if(sb){sb.textContent=t.needSupport?'إلغاء طلب الدعم':'🆘 أحتاج دعم';sb.className='cabt support'+(t.needSupport?' active':'');}
     const submitBtn=document.getElementById('btnSubmitTask');
     if(submitBtn){
-      const rem=2-(t.submitCount||0);
+      const rem=(t.maxSubmits||2)-(t.submitCount||0);
       if(rem<=0){submitBtn.disabled=true;submitBtn.style.opacity='.4';submitBtn.innerHTML='<i class="fas fa-lock" style="margin-left:4px"></i> انتهت المحاولات';}
       else{submitBtn.disabled=false;submitBtn.style.opacity='1';submitBtn.innerHTML='<i class="fas fa-paper-plane" style="margin-left:4px"></i> تسليم ('+rem+' متبقية)';}
     }
@@ -2472,6 +2479,7 @@ function mapKpiTask(r){
       return r.file_name&&r.file_url?[{name:r.file_name,url:r.file_url,addedBy:'admin'}]:[];
     })(),
     needSupport:r.need_support||false, submitCount:r.submit_count||0,
+    maxSubmits:r.max_submits||2,
     submitTime:r.submit_time||null, approveTime:r.approve_time||null,
     rejectTime:r.reject_time||null,
     comments:Array.isArray(r.comments)?r.comments:[]
@@ -2521,6 +2529,7 @@ async function saveKpiTask(){
       status:newStatus,
       department:dept,
       end_date:kpiEndDate,
+      max_submits:parseInt(document.getElementById('fKpiMaxSubmits')?.value)||2,
       file_name:mergedFiles.length?mergedFiles[0].name:null,
       file_url:mergedFiles.length?JSON.stringify(mergedFiles):null,
     };
@@ -2547,7 +2556,7 @@ async function saveKpiTask(){
       file_name:newFilesData.length?newFilesData[0].name:null,
       file_url:newFilesData.length?JSON.stringify(newFilesData):null,
       end_date:kpiEndDate,
-      need_support:false, submit_count:0, comments:[]
+      need_support:false, submit_count:0, max_submits:parseInt(document.getElementById('fKpiMaxSubmits')?.value)||2, comments:[]
     }).select().single();
     hideLoading();
     if(!error&&data){
@@ -2598,7 +2607,7 @@ function renderKpiTasks(){
     const cardCls=t.status==='accepted'?'prio-normal':isLocked?'prio-closed':({urgent:'prio-urgent',normal:'prio-normal',low:'prio-low',closed:'prio-closed'}[t.priority]||'prio-normal');
     const acceptedStyle=t.status==='accepted'?'border:2px solid #22c55e;':
       t.status==='rejected'?'border:2px solid #ef4444;':'';
-    const rem=2-(t.submitCount||0);
+    const rem=(t.maxSubmits||2)-(t.submitCount||0);
     return '<div class="task-card '+cardCls+'" id="kcard-'+t.id+'" style="'+acceptedStyle+(isLocked?'opacity:.8;':'')+'">'+
     '<div class="card-prio-tag">'+(pl[t.priority]||'عادية')+'</div>'+
     (isLocked&&!isAdmin?'<div style="position:absolute;top:8px;left:8px;background:#f1f5f9;color:#64748b;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;z-index:1"><i class="fas fa-lock" style="margin-left:3px"></i>'+(days!==null&&days>20?'يفتح بعد '+(days-20)+' يوم':'قريباً')+'</div>':'')+
@@ -2695,7 +2704,8 @@ async function kpiChangeStatus(id,status){
 
 async function submitKpiTask(id,fileInput,textInput){
   const t=kpiTasks.find(t=>t.id===id);if(!t)return;
-  if((t.submitCount||0)>=2){toast('انتهت المحاولات (2/2)','err');return;}
+  var maxSK=t.maxSubmits||2;
+  if((t.submitCount||0)>=maxSK){toast('انتهت المحاولات ('+maxSK+'/'+maxSK+')','err');return;}
   // تحقق من إمكانية التسليم (مقفلة / غير مستعجلة)
   const chk=canSubmitKpi(t);
   if(!chk.can){toast(chk.reason,'err');return;}
@@ -2780,7 +2790,7 @@ function viewKpiTask(id){
   // KPI user actions shown in comments area
   const cmtArea=document.getElementById('cmtArea');
   if(!isAdmin){
-    const rem=2-(t.submitCount||0);
+    const rem=(t.maxSubmits||2)-(t.submitCount||0);
     // show kpi-specific actions above comments
     cmtArea.setAttribute('data-kpi','1');
   }
@@ -2796,7 +2806,7 @@ function renderKpiComments(t){
   const isAdmin=currentUser?.role==='admin';
   let html='';
   if(!isAdmin){
-    const rem=2-(t.submitCount||0);
+    const rem=(t.maxSubmits||2)-(t.submitCount||0);
     html='<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">'+
       '<button class="cabt submit" onclick="submitKpiTask(\''+t.id+'\')" '+(rem<=0?'disabled style="opacity:.4"':'')+'>'+
         '<i class="fas fa-paper-plane" style="margin-left:4px"></i> تسليم ('+(rem<=0?'انتهت':rem+')')+'</button>'+
@@ -2901,6 +2911,7 @@ function editKpiTask(id){
   const kfl=document.getElementById('kpiFilesList');if(kfl)kfl.innerHTML='';
   const fileInput=document.getElementById('fKpiFile');
   if(fileInput)fileInput.value='';
+  const kmsEl=document.getElementById('fKpiMaxSubmits');if(kmsEl)kmsEl.value=t.maxSubmits||2;
   currentKpiId=id;
   fillSelects();
   showModal('kpiTaskModal');
@@ -3765,38 +3776,44 @@ function parseFilesJson(fileUrl, file){
 }
 
 function adminFilesHtml(t){
-  // قراءة ملفات الأدمن من t.files (مُعبأة في mapTask/mapKpiTask)
+  // اقرأ الملفات دائماً من fileUrl (أحدث مصدر)
   var files=[];
-  if(t.files&&t.files.length){
-    files=t.files;
-  } else {
-    files=parseFilesJson(t.fileUrl,t.file);
+  if(t.fileUrl){
+    try{
+      var p=JSON.parse(t.fileUrl);
+      if(Array.isArray(p)&&p.length) files=p;
+    }catch(e){}
   }
+  if(!files.length&&t.files&&t.files.length) files=t.files;
+  if(!files.length&&t.file&&t.fileUrl) files=[{name:t.file,url:t.fileUrl}];
   if(!files.length) return '';
-  var html='<div style="margin-top:12px;background:#f0f9ff;border-radius:8px;padding:10px 12px">';
-  html+='<div style="font-size:11px;font-weight:800;color:#0369a1;margin-bottom:7px"><i class="fas fa-shield-alt" style="margin-left:4px"></i>مرفقات الإدارة العليا ('+files.length+')</div>';
-  html+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
-  files.forEach(function(f){html+=renderFileLink(f.name,f.url);});
-  html+='</div></div>';
-  return html;
+  var links='';
+  for(var i=0;i<files.length;i++){
+    links+=renderFileLink(files[i].name,files[i].url);
+  }
+  return '<div style="margin-top:12px;background:#f0f9ff;border-radius:8px;padding:10px 12px">'
+    +'<div style="font-size:11px;font-weight:800;color:#0369a1;margin-bottom:7px"><i class="fas fa-shield-alt" style="margin-left:4px"></i>مرفقات الإدارة العليا ('+files.length+')</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px">'+links+'</div></div>';
 }
 
 function userSubmitFilesHtml(comments){
-  // استخراج ملفات التسليم من التعليقات
   if(!comments||!comments.length) return '';
-  var submitComments=comments.filter(function(c){return c.submitFile&&c.submitFile.name;});
-  if(!submitComments.length) return '';
-  var html='<div style="margin-top:10px;background:#f0fdf4;border-radius:8px;padding:10px 12px">';
-  html+='<div style="font-size:11px;font-weight:800;color:#16a34a;margin-bottom:7px"><i class="fas fa-paper-plane" style="margin-left:4px"></i>مرفقات التسليم ('+submitComments.length+')</div>';
-  html+='<div style="display:flex;flex-direction:column;gap:6px">';
-  submitComments.forEach(function(c){
-    html+='<div style="display:flex;align-items:center;gap:8px">';
-    html+=renderFileLink(c.submitFile.name,c.submitFile.url);
-    html+='<span style="font-size:10px;color:#64748b">— '+c.author+' | '+c.time+'</span>';
-    html+='</div>';
-  });
-  html+='</div></div>';
-  return html;
+  var submitCmts=[];
+  for(var i=0;i<comments.length;i++){
+    if(comments[i].submitFile&&comments[i].submitFile.name) submitCmts.push(comments[i]);
+  }
+  if(!submitCmts.length) return '';
+  var links='';
+  for(var j=0;j<submitCmts.length;j++){
+    var c=submitCmts[j];
+    links+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
+      +renderFileLink(c.submitFile.name,c.submitFile.url)
+      +'<span style="font-size:10px;color:#64748b">— '+c.author+' | '+c.time+'</span>'
+      +'</div>';
+  }
+  return '<div style="margin-top:10px;background:#f0fdf4;border-radius:8px;padding:10px 12px">'
+    +'<div style="font-size:11px;font-weight:800;color:#16a34a;margin-bottom:7px"><i class="fas fa-paper-plane" style="margin-left:4px"></i>مرفقات التسليم ('+submitCmts.length+')</div>'
+    +'<div>'+links+'</div></div>';
 }
 
 function kpiFilesHtml(t){
