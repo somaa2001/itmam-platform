@@ -2454,16 +2454,22 @@ function mapKpiTask(r){
     desc:r.description||'', priority:r.priority||'normal',
     status:r.status||'review', dept:r.department||'',
     startDate:r.start_date||null, endDate:r.end_date||null,
-    file:r.file_name||'', fileUrl:'',
+    file:r.file_name||'', fileUrl:r.file_url||'',
     files:(function(){
-      if(!r.file_url) return [];
+      if(!r.file_url) return r.file_name?[{name:r.file_name,url:'',addedBy:'admin'}]:[];
+      try{
+        var p=JSON.parse(r.file_url);
+        if(Array.isArray(p)&&p.length) return p;
+      }catch(e){}
+      return r.file_name&&r.file_url?[{name:r.file_name,url:r.file_url,addedBy:'admin'}]:[];
+    })(),
+    files:(function(){
+      if(!r.file_url) return r.file_name?[{name:r.file_name,url:r.file_url||'',addedBy:'admin'}]:[];
       try{
         var parsed=JSON.parse(r.file_url);
-        if(Array.isArray(parsed)) return parsed;
-        return r.file_name?[{name:r.file_name,url:r.file_url}]:[];
-      }catch(e){
-        return r.file_name&&r.file_url?[{name:r.file_name,url:r.file_url}]:[];
-      }
+        if(Array.isArray(parsed)&&parsed.length) return parsed;
+      }catch(e){}
+      return r.file_name&&r.file_url?[{name:r.file_name,url:r.file_url,addedBy:'admin'}]:[];
     })(),
     needSupport:r.need_support||false, submitCount:r.submit_count||0,
     submitTime:r.submit_time||null, approveTime:r.approve_time||null,
@@ -2833,21 +2839,21 @@ async function uploadKpiFile(id,input){
       newFiles.push({name:file.name,url:url}); // name=الاسم الأصلي, url=رابط الملف
     }
   }
-  if(!newFiles.length){hideLoading();toast('فشل رفع الملف — تحقق من Console للتفاصيل','err');return;}
-  // دمج مع الملفات الموجودة
-  const oldFiles=(t.files&&t.files.length)?t.files:(t.file&&t.fileUrl?[{name:t.file,url:t.fileUrl}]:[]);
-  const mergedFiles=[...oldFiles,...newFiles];
-  // تحديث في DB
-  // نخزن كل الملفات في file_url كـ JSON (لتجنب مشكلة files_data)
-  const filesJson=JSON.stringify(mergedFiles);
-  const {error}=await db.from('kpi_tasks').update({
-    file_name:mergedFiles[0].name,
-    file_url:filesJson
-  }).eq('id',id);
+  if(!newFiles.length){hideLoading();toast('فشل رفع الملف','err');return;}
+  // ملف اليوزر يُضاف للـ comments (لا يُعدّل file_url الخاص بالأدمن)
+  var cmts=Array.isArray(t.comments)?[...t.comments]:[];
+  newFiles.forEach(function(nf){
+    cmts.push({
+      author:currentUser.name,
+      txt:'📎 تم رفع مرفق: '+nf.name,
+      time:nowStamp(),
+      type:'file',
+      submitFile:{name:nf.name,url:nf.url,by:currentUser.name}
+    });
+  });
+  t.comments=cmts;
+  const {error}=await db.from('kpi_tasks').update({comments:cmts}).eq('id',id);
   if(!error){
-    t.file=mergedFiles[0].name;
-    t.fileUrl=mergedFiles[0].url;
-    t.files=mergedFiles;
     toast('✅ تم رفع '+newFiles.length+' ملف');
     renderKpiTasks();viewKpiTask(id);
   } else {toast('خطأ في الحفظ','err');console.error(error);}
@@ -3759,7 +3765,13 @@ function parseFilesJson(fileUrl, file){
 }
 
 function adminFilesHtml(t){
-  var files=parseFilesJson(t.fileUrl,t.file);
+  // قراءة ملفات الأدمن من t.files (مُعبأة في mapTask/mapKpiTask)
+  var files=[];
+  if(t.files&&t.files.length){
+    files=t.files;
+  } else {
+    files=parseFilesJson(t.fileUrl,t.file);
+  }
   if(!files.length) return '';
   var html='<div style="margin-top:12px;background:#f0f9ff;border-radius:8px;padding:10px 12px">';
   html+='<div style="font-size:11px;font-weight:800;color:#0369a1;margin-bottom:7px"><i class="fas fa-shield-alt" style="margin-left:4px"></i>مرفقات الإدارة العليا ('+files.length+')</div>';
