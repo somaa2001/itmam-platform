@@ -1222,12 +1222,13 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
     </div>
     <div class="ig"><label>تاريخ انتهاء التسليم</label><input type="date" id="fKpiEnd"></div>
     <div class="ig">
-      <label>مرفق (اختياري)</label>
+      <label>مرفقات (يمكن إضافة أكثر من ملف)</label>
       <label class="file-upload-area">
         <i class="fas fa-paperclip"></i>
-        <span id="kpiFileName">اضغط لرفع ملف</span>
-        <input type="file" id="fKpiFile" onchange="document.getElementById('kpiFileName').textContent=this.files[0]?.name||'اضغط لرفع ملف'" style="display:none">
+        <span id="kpiFileName">اضغط لرفع ملفات (متعددة)</span>
+        <input type="file" id="fKpiFile" multiple onchange="onKpiFilesChange(this)" style="display:none">
       </label>
+      <div id="kpiFilesList" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
     <div class="modal-foot">
       <button class="btn-ok" onclick="saveKpiTask()">حفظ</button>
@@ -2376,6 +2377,7 @@ function mapKpiTask(r){
     status:r.status||'review', dept:r.department||'',
     startDate:r.start_date||null, endDate:r.end_date||null,
     file:r.file_name||'', fileUrl:r.file_url||'',
+    files:r.files_data||[],
     needSupport:r.need_support||false, submitCount:r.submit_count||0,
     submitTime:r.submit_time||null, approveTime:r.approve_time||null,
     rejectTime:r.reject_time||null,
@@ -2399,11 +2401,24 @@ async function saveKpiTask(){
   showLoading();
   const criteria=document.getElementById('fKpiCriteria')?.value||'';
   const kpiEndDate=document.getElementById('fKpiEnd')?.value||null;
+  // رفع جميع الملفات
+  const kpiFiles=document.getElementById('fKpiFile')?.files||[];
+  let filesData=[];
+  if(kpiFiles.length>0){
+    showLoading();
+    for(const file of kpiFiles){
+      const {data:fd,error:fe}=await db.storage.from('attachments').upload(nid+'/'+file.name,file,{upsert:true});
+      if(!fe&&fd){const {data:ud}=db.storage.from('attachments').getPublicUrl(nid+'/'+file.name);filesData.push({name:file.name,url:ud?.publicUrl||''});}
+    }
+    hideLoading();
+    if(filesData.length>0){fileName=filesData[0].name;fileUrl=filesData[0].url;}
+  }
   const {data,error}=await db.from('kpi_tasks').insert({
     id:nid,title,indicator,criteria,description:document.getElementById('fKpiDesc').value,
     priority:document.getElementById('fKpiPriority').value,
     status:document.getElementById('fKpiStatus').value,
     department:dept, file_name:fileName, file_url:fileUrl,
+    files_data:filesData,
     end_date:kpiEndDate,
     need_support:false,submit_count:0,comments:[]
   }).select().single();
@@ -2453,9 +2468,11 @@ function renderKpiTasks(){
     const chkSubmit=canSubmitKpi(t);
     const isLocked=!isAdmin&&!chkSubmit.can;
     const days=daysUntil(t.endDate);
-    const cardCls=isLocked?'prio-closed':({urgent:'prio-urgent',normal:'prio-normal',low:'prio-low',closed:'prio-closed'}[t.priority]||'prio-normal');
+    const cardCls=t.status==='accepted'?'prio-normal':isLocked?'prio-closed':({urgent:'prio-urgent',normal:'prio-normal',low:'prio-low',closed:'prio-closed'}[t.priority]||'prio-normal');
+    const acceptedStyle=t.status==='accepted'?'border:2px solid #22c55e;':
+      t.status==='rejected'?'border:2px solid #ef4444;':'';
     const rem=2-(t.submitCount||0);
-    return '<div class="task-card '+cardCls+'" id="kcard-'+t.id+'"'+(isLocked?' style="opacity:.8"':'')+'>'+
+    return '<div class="task-card '+cardCls+'" id="kcard-'+t.id+'" style="'+acceptedStyle+(isLocked?'opacity:.8;':'')+'">'+
     '<div class="card-prio-tag">'+(pl[t.priority]||'عادية')+'</div>'+
     (isLocked&&!isAdmin?'<div style="position:absolute;top:8px;left:8px;background:#f1f5f9;color:#64748b;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;z-index:1"><i class="fas fa-lock" style="margin-left:3px"></i>'+(days!==null&&days>20?'يفتح بعد '+(days-20)+' يوم':'قريباً')+'</div>':'')+
     '<div style="font-size:15px;font-weight:800;margin-top:20px">'+t.title+'</div>'+
@@ -2605,7 +2622,19 @@ function viewKpiTask(id){
     (t.submitTime?'<div style="grid-column:1/-1"><div class="view-label">⏱ التسليم</div><div class="view-val" style="color:#16a34a;font-weight:700">'+t.submitTime+' ('+t.submitCount+'/2)</div></div>':'')+
     '</div>'+
     (t.desc?'<div style="margin-bottom:10px"><div class="view-label">الوصف</div><div class="view-val">'+t.desc+'</div></div>':'')+
-    (t.file?'<div><div class="view-label">المرفق</div><a href="'+t.fileUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#eff6ff;color:#2563eb;border-radius:8px;font-size:12.5px;font-weight:600;text-decoration:none;margin-top:5px"><i class="fas fa-paperclip"></i>'+t.file+'</a></div>':'');
+    // عرض المرفقات
+    (()=>{
+      if(!t.file&&(!t.files||!t.files.length)) return '';
+      const allFiles=t.files&&t.files.length?t.files:[{name:t.file,url:t.fileUrl}];
+      return '<div style="margin-top:10px"><div class="view-label">📎 المرفقات ('+allFiles.length+')</div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:6px">'+
+        allFiles.map(f=>'<a href="'+f.url+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#eff6ff;color:#2563eb;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none"><i class="fas fa-paperclip"></i>'+f.name+'</a>').join('')+
+        '</div></div>';
+    })()+
+    // إبراز المقبولة
+    (t.status==='accepted'?'<div style="margin-top:12px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #86efac;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px"><i class="fas fa-check-circle" style="color:#16a34a;font-size:22px"></i><div><div style="font-size:14px;font-weight:800;color:#16a34a">✅ تمت الموافقة على هذا المؤشر</div><div style="font-size:11px;color:#64748b;margin-top:2px">تم قبول المهمة من قبل الإدارة العليا</div></div></div>':
+     t.status==='rejected'?'<div style="margin-top:12px;background:#fef2f2;border:2px solid #fca5a5;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px"><i class="fas fa-times-circle" style="color:#dc2626;font-size:22px"></i><div><div style="font-size:14px;font-weight:800;color:#dc2626">❌ تم رفض هذا المؤشر</div><div style="font-size:11px;color:#64748b;margin-top:2px">يرجى مراجعة التعليقات وإعادة التسليم</div></div></div>':
+     '');
   // Actions
   document.getElementById('adminActions').style.display='none';
   document.getElementById('userActions').style.display='none';
@@ -3461,6 +3490,17 @@ function renderDeptDashboard(){
 // HELPERS
 // ══════════════════════════════════════════════
 // ── صلاحيات المشرف ──
+function onKpiFilesChange(input){
+  const list=document.getElementById('kpiFilesList');
+  if(!list)return;
+  list.innerHTML=[...input.files].map((f,i)=>
+    '<div style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600">'+
+    '<i class="fas fa-file" style="font-size:10px"></i>'+f.name+
+    '</div>'
+  ).join('');
+  document.getElementById('kpiFileName').textContent=input.files.length+' ملف مختار';
+}
+
 function onRoleChange(role){
   if(role==='supervisor'){
     const deptSel=document.getElementById('fUDept');
