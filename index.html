@@ -2693,7 +2693,11 @@ function renderKpiComments(t){
       '<button class="cabt support'+(t.needSupport?' active':'')+'" onclick="toggleKpiSupport(\''+t.id+'\');viewKpiTask(\''+t.id+'\')">🆘 دعم</button>'+
     '</div>';
     // File upload for user
-    html+='<label class="file-upload-area" style="margin-bottom:10px" onclick="kpiUserFileUpload(\''+t.id+'\')"><i class="fas fa-paperclip"></i><span>رفع ملف للمؤشر</span><input type="file" id="kpiUserFile" style="display:none" onchange="uploadKpiFile(\''+t.id+'\',this)"></label>';
+    html+='<label class="file-upload-area" style="margin-bottom:10px">'+
+      '<i class="fas fa-paperclip"></i>'+
+      '<span>رفع ملف/ملفات للمؤشر</span>'+
+      '<input type="file" id="kpiUserFile" multiple style="display:none" onchange="uploadKpiFile(\''+t.id+'\',this)">'+
+      '</label>';
   }
   // comments
   if(!t.comments||!t.comments.length){html+='<div style="font-size:12px;color:var(--muted)">لا توجد تعليقات</div>';}
@@ -2704,15 +2708,34 @@ function renderKpiComments(t){
 async function uploadKpiFile(id,input){
   if(!input.files[0])return;
   const t=kpiTasks.find(t=>t.id===id);if(!t)return;
-  const file=input.files[0];
   showLoading();
-  const {data:fd,error:fe}=await db.storage.from('attachments').upload(id+'/user/'+file.name,file,{upsert:true});
-  if(!fe&&fd){
-    const {data:ud}=db.storage.from('attachments').getPublicUrl(id+'/user/'+file.name);
-    t.file=file.name;t.fileUrl=ud?.publicUrl||'';
-    await db.from('kpi_tasks').update({file_name:t.file,file_url:t.fileUrl}).eq('id',id);
-    toast('✅ تم رفع الملف');renderKpiTasks();viewKpiTask(id);
-  } else {toast('خطأ في رفع الملف','err');}
+  // رفع جميع الملفات المختارة
+  const newFiles=[];
+  for(const file of input.files){
+    const path=id+'/'+Date.now()+'/'+file.name;
+    const {data:fd,error:fe}=await db.storage.from('attachments').upload(path,file,{upsert:true});
+    if(!fe&&fd){
+      const {data:ud}=db.storage.from('attachments').getPublicUrl(path);
+      newFiles.push({name:file.name,url:ud?.publicUrl||''});
+    }
+  }
+  if(!newFiles.length){hideLoading();toast('خطأ في رفع الملف','err');return;}
+  // دمج مع الملفات الموجودة
+  const oldFiles=(t.files&&t.files.length)?t.files:(t.file&&t.fileUrl?[{name:t.file,url:t.fileUrl}]:[]);
+  const mergedFiles=[...oldFiles,...newFiles];
+  // تحديث في DB
+  const {error}=await db.from('kpi_tasks').update({
+    file_name:mergedFiles[0].name,
+    file_url:mergedFiles[0].url,
+    files_data:mergedFiles
+  }).eq('id',id);
+  if(!error){
+    t.file=mergedFiles[0].name;
+    t.fileUrl=mergedFiles[0].url;
+    t.files=mergedFiles;
+    toast('✅ تم رفع '+newFiles.length+' ملف');
+    renderKpiTasks();viewKpiTask(id);
+  } else {toast('خطأ في الحفظ','err');console.error(error);}
   hideLoading();
 }
 
