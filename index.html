@@ -1978,7 +1978,7 @@ async function submitTask(){
   if(hasFile){
     const file=fileInp.files[0];fileName=file.name;
     showLoading();
-    const taskSubmitPath=t.id+'/submit/'+file.name;
+    const taskSubmitPath=t.id+'/submit/'+sanitizeFileName(file.name);
     const {data:fd,error:fe}=await db.storage.from('attachments').upload(taskSubmitPath,file,{upsert:true});
     if(!fe&&fd){
       const {data:ud}=db.storage.from('attachments').getPublicUrl(taskSubmitPath);
@@ -2437,7 +2437,7 @@ async function saveKpiTask(){
   const targetId=currentKpiId||('KPI-'+(Date.now()));
   if(kpiFiles.length>0){
     for(const file of kpiFiles){
-      const filePath2=targetId+'/'+file.name;
+      const filePath2=targetId+'/'+sanitizeFileName(file.name);
       const {data:fd,error:fe}=await db.storage.from('attachments').upload(filePath2,file,{upsert:true});
       if(!fe&&fd){
         const {data:ud}=db.storage.from('attachments').getPublicUrl(filePath2);
@@ -2649,7 +2649,7 @@ async function submitKpiTask(id,fileInput,textInput){
   if(hasFile){
     showLoading();
     const file=fileInput.files[0];fileName=file.name;
-    const submitPath=id+'/submit/'+file.name;
+    const submitPath=id+'/submit/'+sanitizeFileName(file.name);
     const {data:fd,error:fe}=await db.storage.from('attachments').upload(submitPath,file,{upsert:true});
     if(!fe&&fd){
       const {data:ud}=db.storage.from('attachments').getPublicUrl(submitPath);
@@ -2770,7 +2770,7 @@ async function uploadKpiFile(id,input){
   // رفع جميع الملفات المختارة
   const newFiles=[];
   for(const file of input.files){
-    const path=id+'/'+Date.now()+'/'+file.name;
+    const path=id+'/'+Date.now()+'_'+sanitizeFileName(file.name);
     console.log('Uploading:',path);
     const {data:fd,error:fe}=await db.storage.from('attachments').upload(path,file,{upsert:true});
     if(fe){console.error('KPI upload error:',fe);toast('خطأ: '+fe.message,'err');}
@@ -3625,6 +3625,14 @@ function renderDeptDashboard(){
 // HELPERS
 // ══════════════════════════════════════════════
 // ── صلاحيات المشرف ──
+function sanitizeFileName(name){
+  // إزالة المسافات والأحرف الخاصة من اسم الملف
+  var ext = name.split('.').pop();
+  var base = name.slice(0, -(ext.length+1));
+  var clean = base.replace(/[^a-zA-Z0-9؀-ۿ._-]/g,'_').replace(/_{2,}/g,'_');
+  return clean + '.' + ext;
+}
+
 function fileIcon(name){
   if(!name) return 'fa-paperclip';
   var ext=(name.split('.').pop()||'').toLowerCase();
