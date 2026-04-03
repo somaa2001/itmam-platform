@@ -2406,13 +2406,13 @@ async function saveKpiTask(){
 }
 
 async function loadKpiTasks(){
-  const isAdmin=currentUser?.role==='admin';
+  const isAdmin=isAdminOrSup(); // الأدمن والمشرف يريان كل المهام
   const {data,error}=await db.from('kpi_tasks').select('*').order('created_at',{ascending:false});
   if(error){console.error('kpi load error',error);return;}
   if(data){
     let filtered=data;
     if(!isAdmin){
-      // اليوزر يرى فقط مهام إدارته أو المهام بدون إدارة محددة
+      // اليوزر يرى فقط مهام إدارته
       filtered=data.filter(r=>!r.department||r.department===currentUser?.dept);
     }
     kpiTasks=filtered.map(mapKpiTask);
