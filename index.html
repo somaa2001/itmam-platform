@@ -1752,7 +1752,7 @@ function ms(icon,cls,val,lbl,style){
 }
 
 function taskCard(t,showDept,isUser){
-  const isAdmin=currentUser?.role==='admin';
+  const isAdmin=isAdminOrSup();
   const prioCls='prio-'+(t.priority||'normal');
   const prioLabel={urgent:'مستعجلة',normal:'عادية',low:'غير مستعجلة',closed:'مقفلة'}[t.priority]||'عادية';
   const sStyle={review:'background:#fef9c3;color:#ca8a04',accepted:'background:#dcfce7;color:#16a34a',rejected:'background:#fee2e2;color:#dc2626',completed:'background:#d1fae5;color:#065f46',pending:'background:#ede9fe;color:#7c3aed',closed:'background:#f1f5f9;color:#64748b'}[t.status]||'background:#f1f5f9;color:#64748b';
