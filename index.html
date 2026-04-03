@@ -2894,7 +2894,6 @@ function editKpiTask(id){
   document.getElementById('fKpiStatus').value=t.status;
   if(document.getElementById('fKpiCriteria'))document.getElementById('fKpiCriteria').value=t.criteria||'';
   if(document.getElementById('fKpiEnd'))document.getElementById('fKpiEnd').value=t.endDate||'';
-  document.getElementById('fKpiDept').value=t.dept||'';
   // تحميل الملفات الحالية في editingFiles
   editingFiles=[];
   if(t.files&&t.files.length) editingFiles=[...t.files];
@@ -2914,6 +2913,9 @@ function editKpiTask(id){
   const kmsEl=document.getElementById('fKpiMaxSubmits');if(kmsEl)kmsEl.value=t.maxSubmits||2;
   currentKpiId=id;
   fillSelects();
+  // تعيين الإدارة بعد fillSelects لمنع تغييرها تلقائياً
+  const kDeptEl=document.getElementById('fKpiDept');
+  if(kDeptEl&&t.dept) kDeptEl.value=t.dept;
   showModal('kpiTaskModal');
 }
 
