@@ -1245,7 +1245,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
     <div class="ig"><label>كلمة المرور</label><input type="password" id="fUPass" value="123456"></div>
     <div class="ig-row">
       <div class="ig"><label>الإدارة</label><select id="fUDept"></select></div>
-      <div class="ig"><label>الصلاحية</label><select id="fURole"><option value="user">مستخدم</option><option value="supervisor">مشرف</option><option value="admin">مسؤول</option></select></div>
+      <div class="ig"><label>الصلاحية</label><select id="fURole" onchange="onRoleChange(this.value)"><option value="user">مستخدم</option><option value="supervisor">مشرف</option><option value="admin">مسؤول</option></select></div>
     </div>
     <div class="modal-foot"><button class="btn-ok" onclick="saveUser()">إضافة</button><button class="btn-cc" onclick="hideModal('userModal')">إلغاء</button></div>
   </div>
@@ -1605,7 +1605,7 @@ function buildSidebar(){
     <div class="sb-item" data-pg="complaints"><i class="fas fa-flag"></i> البلاغات <span class="sb-badge" id="sbComplaintBadge" style="display:none">0</span></div>
     <div class="sb-item" data-pg="chat"><i class="fas fa-comments"></i> الدردشة</div>
     <div class="sb-sec">الإدارة</div>
-    ${isAdminOnly()?'<div class="sb-item" data-pg=\"users\"><i class="fas fa-users"></i> المستخدمون</div>':''}
+    <div class="sb-item" id="sbUsers" data-pg="users"><i class="fas fa-users"></i> المستخدمون</div>
     <div class="sb-item" data-pg="kpi"><i class="fas fa-chart-bar"></i> مؤشرات الأداء</div>`;
     document.getElementById('headerNewBtn').style.display='flex';
     document.getElementById('headerNewBtn').onclick=openTaskModal;
@@ -1613,6 +1613,8 @@ function buildSidebar(){
     document.getElementById('btnNewAnn').onclick=()=>showModal('annModal');
     document.getElementById('btnNewDept').style.display='flex';
     setTimeout(()=>{const bc=document.getElementById('btnNewComplaint');if(bc)bc.onclick=()=>{fillComplaintDeptSelect();showModal('complaintModal');};},100);
+    // إخفاء المستخدمون من المشرف
+    setTimeout(()=>{const su=document.getElementById('sbUsers');if(su)su.style.display=isAdminOnly()?'flex':'none';},50);
   } else {
     html+=`<div class="sb-sec">الرئيسية</div>
     <div class="sb-item on" data-pg="my-tasks"><i class="fas fa-tasks"></i> مهامي <span class="sb-badge" id="sbMyBadge" style="display:none">0</span></div>
@@ -2423,7 +2425,8 @@ function renderKpiTasks(){
   const addBtn=document.getElementById('btnAddKpi');
   if(addBtn)addBtn.style.display=isAdminOnly()?'flex':'none';
   if(!kpiTasks.length){grid.innerHTML='<div class="empty-state"><i class="fas fa-chart-line"></i><p>لا توجد مهام مؤشرات</p></div>';return;}
-  const isAdmin=currentUser?.role==='admin';
+  const isAdmin=isAdminOrSup(); // المشرف يرى كالأدمن
+  const isSupervisor=currentUser?.role==='supervisor';
   const pl={urgent:'🔴 مستعجلة',normal:'🟢 عادية',low:'🔵 غير مستعجلة',closed:'⚫ مقفلة'};
   const ss={review:'background:#fef9c3;color:#ca8a04',accepted:'background:#dcfce7;color:#16a34a',completed:'background:#d1fae5;color:#065f46',rejected:'background:#fee2e2;color:#dc2626'};
   // ترتيب حسب الأقرب
@@ -2736,10 +2739,10 @@ async function loadPresence(){
 async function renderChat(){
   await updatePresence();
   await loadPresence();
-  const isAdmin=currentUser?.role==='admin';
-  const allDepts=[...new Set(users.filter(u=>u.role!=='admin').map(u=>u.dept))].filter(Boolean);
+  const isAdmin=isAdminOrSup();
+  const allDepts=[...new Set(users.filter(u=>u.role!=='admin'&&u.role!=='supervisor').map(u=>u.dept))].filter(Boolean);
   let rooms=[{name:'القناة العامة',color:'#0f2744',dept:''}];
-  if(isAdmin){
+  if(isAdminOrSup()){
     allDepts.forEach(dept=>rooms.push({name:dept,color:deptColor(dept),dept}));
   } else {
     rooms.push({name:currentUser.dept,color:deptColor(currentUser.dept),dept:currentUser.dept});
@@ -3446,6 +3449,17 @@ function renderDeptDashboard(){
 // HELPERS
 // ══════════════════════════════════════════════
 // ── صلاحيات المشرف ──
+function onRoleChange(role){
+  if(role==='supervisor'){
+    const deptSel=document.getElementById('fUDept');
+    if(deptSel){
+      for(let i=0;i<deptSel.options.length;i++){
+        if(deptSel.options[i].value==='فريق الجودة'){deptSel.value='فريق الجودة';break;}
+      }
+    }
+  }
+}
+
 function isAdminOrSup(){return currentUser?.role==='admin'||currentUser?.role==='supervisor';}
 function isAdminOnly(){return currentUser?.role==='admin';}
 
