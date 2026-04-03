@@ -1483,7 +1483,8 @@ window.onload=function(){
             hideLoading();
             if(error||!data){localStorage.removeItem('itmam_session');return;}
             currentUser=mapUser(data);
-            await loadAllData();
+            await ensureStorageBucket();
+    await loadAllData();
             document.getElementById('landingPage').style.display='none';
             document.getElementById('appLayout').classList.add('show');
             document.getElementById('sbAv').textContent=currentUser.name[0];
@@ -1560,6 +1561,19 @@ async function login(){
     hideLoading();toast('خطأ في الاتصال بقاعدة البيانات','err');console.error(e);
   }
   hideLoading();
+}
+
+async function ensureStorageBucket(){
+  try{
+    // تحقق من وجود bucket
+    const {data:buckets}=await db.storage.listBuckets();
+    const exists=buckets&&buckets.some(b=>b.name==='attachments');
+    if(!exists){
+      const {error}=await db.storage.createBucket('attachments',{public:true,allowedMimeTypes:null,fileSizeLimit:52428800});
+      if(error)console.warn('Bucket create:',error.message);
+      else console.log('✅ Bucket created');
+    }else{console.log('✅ Bucket exists');}
+  }catch(e){console.warn('Storage check failed:',e);}
 }
 
 async function loadAllData(){
@@ -1867,10 +1881,16 @@ async function saveTask(){
         fileName=file.name;
         const basePath='HM-'+(Date.now())+'/'+file.name;
         showLoading();
-        const {data:fData,error:fErr}=await db.storage.from('attachments').upload(basePath,file);
-        if(!fErr&&fData){
+        const {data:fData,error:fErr}=await db.storage.from('attachments').upload(basePath,file,{upsert:true});
+        if(fErr){console.error('Upload error:',fErr);toast('خطأ رفع الملف: '+fErr.message,'err');}
+        else if(fData){
           const {data:urlData}=db.storage.from('attachments').getPublicUrl(basePath);
           fileUrl=urlData?.publicUrl||'';
+          // تأكد أن URL صحيح وليس رابط الموقع
+          if(!fileUrl.includes('supabase.co')&&!fileUrl.includes('supabase.in')){
+            fileUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+basePath;
+          }
+          console.log('File URL:',fileUrl);
         }
       }
       // إذا اختار "الكل" — أنشئ مهمة لكل إدارة
@@ -1958,8 +1978,13 @@ async function submitTask(){
   if(hasFile){
     const file=fileInp.files[0];fileName=file.name;
     showLoading();
-    const {data:fd,error:fe}=await db.storage.from('attachments').upload(t.id+'/submit/'+file.name,file,{upsert:true});
-    if(!fe&&fd){const {data:ud}=db.storage.from('attachments').getPublicUrl(t.id+'/submit/'+file.name);fileUrl=ud?.publicUrl||'';}
+    const taskSubmitPath=t.id+'/submit/'+file.name;
+    const {data:fd,error:fe}=await db.storage.from('attachments').upload(taskSubmitPath,file,{upsert:true});
+    if(!fe&&fd){
+      const {data:ud}=db.storage.from('attachments').getPublicUrl(taskSubmitPath);
+      fileUrl=ud?.publicUrl||'';
+      if(!fileUrl||!fileUrl.includes('supabase'))fileUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+taskSubmitPath;
+    }
     hideLoading();
   }
   t.submitCount=(t.submitCount||0)+1;
@@ -2034,7 +2059,7 @@ function viewTask(id){
     '</div>'+
     '<div style="margin-bottom:10px"><div class="view-label">الوصف</div><div class="view-val" style="line-height:1.7">'+t.desc+'</div></div>'+
     (t.required?'<div><div class="view-label">المطلوب</div><div class="view-val" style="line-height:1.7">'+t.required+'</div></div>':'')+
-    (t.file?'<div style="margin-top:10px"><div class="view-label">المرفق</div><a href="'+t.fileUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#eff6ff;color:#2563eb;border-radius:8px;font-size:12.5px;font-weight:600;text-decoration:none;margin-top:5px"><i class="fas fa-paperclip"></i>'+t.file+'</a></div>':'');
+    (t.file?'<div style="margin-top:12px"><div class="view-label" style="margin-bottom:6px">📎 المرفق</div>'+renderFileLink(t.file,t.fileUrl)+'</div>':'');
   renderComments(t);
   const cmtAv=document.getElementById('cmtAv');
   if(cmtAv&&currentUser) cmtAv.textContent=currentUser.name[0];
@@ -2412,8 +2437,14 @@ async function saveKpiTask(){
   const targetId=currentKpiId||('KPI-'+(Date.now()));
   if(kpiFiles.length>0){
     for(const file of kpiFiles){
-      const {data:fd,error:fe}=await db.storage.from('attachments').upload(targetId+'/'+file.name,file,{upsert:true});
-      if(!fe&&fd){const {data:ud}=db.storage.from('attachments').getPublicUrl(targetId+'/'+file.name);newFilesData.push({name:file.name,url:ud?.publicUrl||''});}
+      const filePath2=targetId+'/'+file.name;
+      const {data:fd,error:fe}=await db.storage.from('attachments').upload(filePath2,file,{upsert:true});
+      if(!fe&&fd){
+        const {data:ud}=db.storage.from('attachments').getPublicUrl(filePath2);
+        var furl=ud?.publicUrl||'';
+        if(!furl||!furl.includes('supabase'))furl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+filePath2;
+        newFilesData.push({name:file.name,url:furl});
+      }
     }
   }
 
@@ -2618,16 +2649,40 @@ async function submitKpiTask(id,fileInput,textInput){
   if(hasFile){
     showLoading();
     const file=fileInput.files[0];fileName=file.name;
-    const {data:fd,error:fe}=await db.storage.from('attachments').upload(id+'/submit/'+file.name,file,{upsert:true});
-    if(!fe&&fd){const {data:ud}=db.storage.from('attachments').getPublicUrl(id+'/submit/'+file.name);fileUrl=ud?.publicUrl||'';}
+    const submitPath=id+'/submit/'+file.name;
+    const {data:fd,error:fe}=await db.storage.from('attachments').upload(submitPath,file,{upsert:true});
+    if(!fe&&fd){
+      const {data:ud}=db.storage.from('attachments').getPublicUrl(submitPath);
+      fileUrl=ud?.publicUrl||'';
+      if(!fileUrl||!fileUrl.includes('supabase'))fileUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+submitPath;
+    }
     hideLoading();
   }
   if(hasText) t.comments.push({author:currentUser.name,txt:'📝 ملاحظة التسليم: '+textInput.value.trim(),time:nowStamp()});
   t.submitCount=(t.submitCount||0)+1;
   t.submitTime=nowStamp();t.status='review';
-  if(fileName){t.file=fileName;t.fileUrl=fileUrl;}
+  // دمج ملف التسليم مع الملفات الموجودة (لا نحذف ملفات الأدمن)
+  if(fileName&&fileUrl){
+    // قراءة الملفات الحالية
+    var existingFiles=[];
+    try{
+      if(t.fileUrl&&t.fileUrl.startsWith('[')) existingFiles=JSON.parse(t.fileUrl);
+      else if(t.file&&t.fileUrl) existingFiles=[{name:t.file,url:t.fileUrl}];
+    }catch(e){}
+    existingFiles.push({name:fileName,url:fileUrl,submittedBy:currentUser.name});
+    t.files=existingFiles;
+    t.file=existingFiles[0].name;
+    t.fileUrl=JSON.stringify(existingFiles);
+  }
   showLoading();
-  await db.from('kpi_tasks').update({submit_count:t.submitCount,submit_time:t.submitTime,status:'review',file_name:t.file||null,file_url:t.fileUrl||null,comments:t.comments}).eq('id',id);
+  await db.from('kpi_tasks').update({
+    submit_count:t.submitCount,
+    submit_time:t.submitTime,
+    status:'review',
+    file_name:t.file||null,
+    file_url:t.fileUrl||null,
+    comments:t.comments
+  }).eq('id',id);
   hideLoading();
   renderKpiTasks();toast('تم التسليم — قيد المراجعة ✅');
   addNotif('check-circle','g','✅ تسليم مؤشر: "'+t.title+'"',id,'kpi');
@@ -2716,13 +2771,20 @@ async function uploadKpiFile(id,input){
   const newFiles=[];
   for(const file of input.files){
     const path=id+'/'+Date.now()+'/'+file.name;
+    console.log('Uploading:',path);
     const {data:fd,error:fe}=await db.storage.from('attachments').upload(path,file,{upsert:true});
-    if(!fe&&fd){
+    if(fe){console.error('KPI upload error:',fe);toast('خطأ: '+fe.message,'err');}
+    else if(fd){
       const {data:ud}=db.storage.from('attachments').getPublicUrl(path);
-      newFiles.push({name:file.name,url:ud?.publicUrl||''});
+      var url=ud?.publicUrl||'';
+      if(!url||!url.includes('supabase')){
+        url='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+path;
+      }
+      console.log('KPI URL:',url);
+      newFiles.push({name:file.name,url:url});
     }
   }
-  if(!newFiles.length){hideLoading();toast('خطأ في رفع الملف','err');return;}
+  if(!newFiles.length){hideLoading();toast('فشل رفع الملف — تحقق من Console للتفاصيل','err');return;}
   // دمج مع الملفات الموجودة
   const oldFiles=(t.files&&t.files.length)?t.files:(t.file&&t.fileUrl?[{name:t.file,url:t.fileUrl}]:[]);
   const mergedFiles=[...oldFiles,...newFiles];
@@ -3563,12 +3625,61 @@ function renderDeptDashboard(){
 // HELPERS
 // ══════════════════════════════════════════════
 // ── صلاحيات المشرف ──
+function fileIcon(name){
+  if(!name) return 'fa-paperclip';
+  var ext=(name.split('.').pop()||'').toLowerCase();
+  if(['pdf'].includes(ext)) return 'fa-file-pdf';
+  if(['doc','docx'].includes(ext)) return 'fa-file-word';
+  if(['xls','xlsx'].includes(ext)) return 'fa-file-excel';
+  if(['ppt','pptx'].includes(ext)) return 'fa-file-powerpoint';
+  if(['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return 'fa-file-image';
+  if(['zip','rar','7z'].includes(ext)) return 'fa-file-archive';
+  return 'fa-file-alt';
+}
+
+function fileColor(name){
+  if(!name) return '#2563eb';
+  var ext=(name.split('.').pop()||'').toLowerCase();
+  if(['pdf'].includes(ext)) return '#dc2626';
+  if(['doc','docx'].includes(ext)) return '#2563eb';
+  if(['xls','xlsx'].includes(ext)) return '#16a34a';
+  if(['ppt','pptx'].includes(ext)) return '#d97706';
+  return '#2563eb';
+}
+
+function renderFileLink(name, url){
+  if(!name||!url) return '';
+  // تأكد أن URL صحيح
+  var finalUrl=url;
+  if(!url.startsWith('http')){
+    finalUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+url;
+  }
+  var color=fileColor(name);
+  return '<a href="'+finalUrl+'" target="_blank" rel="noopener noreferrer" '+
+    'onclick="event.stopPropagation()" '+
+    'style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;'+
+    'background:#f8fafc;color:'+color+';border:1.5px solid '+color+'33;border-radius:8px;'+
+    'font-size:12px;font-weight:600;text-decoration:none;cursor:pointer">'+
+    '<i class="fas '+fileIcon(name)+'" style="font-size:13px"></i>'+name+'</a>';
+}
+
 function kpiFilesHtml(t){
-  var allFiles=(t.files&&t.files.length)?t.files:(t.file&&t.fileUrl?[{name:t.file,url:t.fileUrl}]:[]);
+  // قراءة الملفات - تدعم JSON array أو ملف واحد
+  var allFiles=[];
+  if(t.files&&t.files.length) allFiles=t.files;
+  else if(t.fileUrl){
+    try{
+      var parsed=JSON.parse(t.fileUrl);
+      if(Array.isArray(parsed)) allFiles=parsed;
+      else if(t.file) allFiles=[{name:t.file,url:t.fileUrl}];
+    }catch(e){
+      if(t.file&&t.fileUrl) allFiles=[{name:t.file,url:t.fileUrl}];
+    }
+  } else if(t.file&&t.fileUrl) allFiles=[{name:t.file,url:t.fileUrl}];
   if(!allFiles.length) return '';
-  return '<div style="margin-top:10px"><div class="view-label">📎 المرفقات ('+allFiles.length+')</div>'+
-    '<div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:6px">'+
-    allFiles.map(function(f){return '<a href="'+f.url+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#eff6ff;color:#2563eb;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none"><i class="fas fa-paperclip"></i>'+f.name+'</a>';}).join('')+
+  return '<div style="margin-top:12px"><div class="view-label" style="margin-bottom:6px">📎 المرفقات ('+allFiles.length+')</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:7px">'+
+    allFiles.map(function(f){return renderFileLink(f.name,f.url);}).join('')+
     '</div></div>';
 }
 
