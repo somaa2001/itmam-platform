@@ -1798,6 +1798,15 @@ function taskCard(t,showDept,isUser){
     (t.desc?'<div style="font-size:12.5px;color:#e11d48;font-weight:500;line-height:1.5">'+t.desc+'</div>':'')+
     (t.required?'<div style="font-size:12px;color:var(--muted)"><b>المطلوب:</b> '+t.required+'</div>':'')+
     ((t.start||t.end)?'<div style="font-size:11px;color:#94a3b8;line-height:1.9">'+(t.start?'البدء: '+fmtDate(t.start)+'<br>':'')+(t.end?'الانتهاء: '+fmtDate(t.end):'')+'</div>':'')+
+    (t.end?(function(){
+      var days=daysUntil(t.end);
+      if(days===null)return '';
+      if(days<0) return '<div style="display:inline-flex;align-items:center;gap:5px;margin-top:3px;background:#fef2f2;color:#dc2626;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700"><i class="fas fa-clock"></i>تجاوز الموعد بـ '+Math.abs(days)+' يوم</div>';
+      if(days===0) return '<div style="display:inline-flex;align-items:center;gap:5px;margin-top:3px;background:#fef9c3;color:#ca8a04;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700"><i class="fas fa-exclamation-circle"></i>ينتهي اليوم!</div>';
+      if(days<=3) return '<div style="display:inline-flex;align-items:center;gap:5px;margin-top:3px;background:#fef9c3;color:#ca8a04;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700"><i class="fas fa-clock"></i>متبقي '+days+' يوم</div>';
+      if(days<=7) return '<div style="display:inline-flex;align-items:center;gap:5px;margin-top:3px;background:#eff6ff;color:#2563eb;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600"><i class="fas fa-clock"></i>متبقي '+days+' أيام</div>';
+      return '<div style="display:inline-flex;align-items:center;gap:5px;margin-top:3px;background:#f1f5f9;color:#475569;padding:3px 9px;border-radius:20px;font-size:11px"><i class="fas fa-calendar"></i>الانتهاء بعد '+days+' يوم</div>';
+    })():'') +
     (t.submitTime?'<div style="font-size:11px;background:#f0fdf4;color:#16a34a;padding:4px 8px;border-radius:6px"><i class="fas fa-paper-plane" style="margin-left:4px"></i>تم التسليم: '+t.submitTime+' <span style="opacity:.6">('+t.submitCount+'/2)</span></div>':'')+
     (t.approveTime?'<div style="font-size:11px;background:#f0fdf4;color:#065f46;padding:4px 8px;border-radius:6px"><i class="fas fa-thumbs-up" style="margin-left:4px"></i>تم القبول: '+t.approveTime+'</div>':'')+
     (t.rejectTime?'<div style="font-size:11px;background:#fef2f2;color:#dc2626;padding:4px 8px;border-radius:6px"><i class="fas fa-thumbs-down" style="margin-left:4px"></i>تم الرفض: '+t.rejectTime+'</div>':'')+
@@ -2103,15 +2112,7 @@ function viewTask(id){
     '</div>'+
     '<div style="margin-bottom:10px"><div class="view-label">الوصف</div><div class="view-val" style="line-height:1.7">'+t.desc+'</div></div>'+
     (t.required?'<div><div class="view-label">المطلوب</div><div class="view-val" style="line-height:1.7">'+t.required+'</div></div>':'')+
-    (()=>{
-      var vFiles=[];
-      try{var p=JSON.parse(t.fileUrl||'[]');if(Array.isArray(p))vFiles=p;}catch(e){if(t.file&&t.fileUrl)vFiles=[{name:t.file,url:t.fileUrl}];}
-      if(!vFiles.length&&t.file&&t.fileUrl)vFiles=[{name:t.file,url:t.fileUrl}];
-      if(!vFiles.length)return '';
-      return '<div style="margin-top:12px"><div class="view-label" style="margin-bottom:6px">📎 مرفقات الأدمن ('+vFiles.length+')</div>'+
-        '<div style="display:flex;flex-wrap:wrap;gap:7px">'+
-        vFiles.map(function(f){return renderFileLink(f.name,f.url);}).join('')+'</div></div>';
-    })();
+    adminFilesHtml(t)+userSubmitFilesHtml(t.comments);
   renderComments(t);
   const cmtAv=document.getElementById('cmtAv');
   if(cmtAv&&currentUser) cmtAv.textContent=currentUser.name[0];
@@ -2805,13 +2806,10 @@ function renderKpiComments(t){
   // comments
   if(!t.comments||!t.comments.length){html+='<div style="font-size:12px;color:var(--muted)">لا توجد تعليقات</div>';}
   else{html+=t.comments.map(function(c){
-  var fileHtml='';
-  if(c.submitFile&&c.submitFile.name){
-    fileHtml='<div style="margin-top:5px">'+renderFileLink(c.submitFile.name,c.submitFile.url)+'</div>';
-  }
+  // لا نُكرر عرض ملف التسليم في التعليقات (يُعرض في قسم مرفقات التسليم)
   return '<div class="cmt-item"><div class="cmt-av">'+c.author[0]+'</div>'+
     '<div style="flex:1"><div style="font-size:10.5px;color:var(--muted)"><b>'+c.author+'</b> • '+c.time+'</div>'+
-    '<div style="font-size:12.5px">'+c.txt+'</div>'+fileHtml+'</div></div>';
+    '<div style="font-size:12.5px">'+c.txt+'</div></div></div>';
 }).join('');}
   area.innerHTML=html;
 }
@@ -3749,24 +3747,48 @@ function renderFileLink(name, url){
     '<i class="fas '+fileIcon(name)+'" style="font-size:13px"></i>'+name+'</a>';
 }
 
+function parseFilesJson(fileUrl, file){
+  // قراءة الملفات من JSON أو ملف واحد
+  if(!fileUrl && !file) return [];
+  try{
+    var p=JSON.parse(fileUrl||'[]');
+    if(Array.isArray(p)&&p.length) return p;
+  }catch(e){}
+  if(file&&fileUrl&&fileUrl.startsWith('http')) return [{name:file,url:fileUrl,addedBy:'admin'}];
+  return [];
+}
+
+function adminFilesHtml(t){
+  var files=parseFilesJson(t.fileUrl,t.file);
+  if(!files.length) return '';
+  var html='<div style="margin-top:12px;background:#f0f9ff;border-radius:8px;padding:10px 12px">';
+  html+='<div style="font-size:11px;font-weight:800;color:#0369a1;margin-bottom:7px"><i class="fas fa-shield-alt" style="margin-left:4px"></i>مرفقات الإدارة العليا ('+files.length+')</div>';
+  html+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+  files.forEach(function(f){html+=renderFileLink(f.name,f.url);});
+  html+='</div></div>';
+  return html;
+}
+
+function userSubmitFilesHtml(comments){
+  // استخراج ملفات التسليم من التعليقات
+  if(!comments||!comments.length) return '';
+  var submitComments=comments.filter(function(c){return c.submitFile&&c.submitFile.name;});
+  if(!submitComments.length) return '';
+  var html='<div style="margin-top:10px;background:#f0fdf4;border-radius:8px;padding:10px 12px">';
+  html+='<div style="font-size:11px;font-weight:800;color:#16a34a;margin-bottom:7px"><i class="fas fa-paper-plane" style="margin-left:4px"></i>مرفقات التسليم ('+submitComments.length+')</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:6px">';
+  submitComments.forEach(function(c){
+    html+='<div style="display:flex;align-items:center;gap:8px">';
+    html+=renderFileLink(c.submitFile.name,c.submitFile.url);
+    html+='<span style="font-size:10px;color:#64748b">— '+c.author+' | '+c.time+'</span>';
+    html+='</div>';
+  });
+  html+='</div></div>';
+  return html;
+}
+
 function kpiFilesHtml(t){
-  // قراءة الملفات - تدعم JSON array أو ملف واحد
-  var allFiles=[];
-  if(t.files&&t.files.length) allFiles=t.files;
-  else if(t.fileUrl){
-    try{
-      var parsed=JSON.parse(t.fileUrl);
-      if(Array.isArray(parsed)) allFiles=parsed;
-      else if(t.file) allFiles=[{name:t.file,url:t.fileUrl}];
-    }catch(e){
-      if(t.file&&t.fileUrl) allFiles=[{name:t.file,url:t.fileUrl}];
-    }
-  } else if(t.file&&t.fileUrl) allFiles=[{name:t.file,url:t.fileUrl}];
-  if(!allFiles.length) return '';
-  return '<div style="margin-top:12px"><div class="view-label" style="margin-bottom:6px">📎 المرفقات ('+allFiles.length+')</div>'+
-    '<div style="display:flex;flex-wrap:wrap;gap:7px">'+
-    allFiles.map(function(f){return renderFileLink(f.name,f.url);}).join('')+
-    '</div></div>';
+  return adminFilesHtml(t)+userSubmitFilesHtml(t.comments);
 }
 
 function onKpiFilesChange(input){
