@@ -1465,7 +1465,7 @@ function hideLoading(){document.getElementById('loadingOverlay').classList.add('
 // INIT
 // ══════════════════════════════════════════════
 window.onload=function(){
-  document.getElementById('loginHint').innerHTML='<b>مسؤول:</b> admin / 123456<br><b>مثال إدارة:</b> mashaer / 123456';
+  document.getElementById('loginHint').innerHTML='';
   document.getElementById('btnEnter').onclick=()=>showModal('loginOverlay');
   document.getElementById('btnLogin').onclick=login;
   document.getElementById('inpPass').onkeypress=e=>{if(e.key==='Enter')login();};
