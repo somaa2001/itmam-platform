@@ -3749,19 +3749,23 @@ function fileColor(name){
 }
 
 function renderFileLink(name, url){
-  if(!name||!url) return '';
-  // تأكد أن URL صحيح
-  var finalUrl=url;
-  if(!url.startsWith('http')){
-    finalUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+url;
+  if(!name) return '';
+  var finalUrl=url||'';
+  if(finalUrl&&!finalUrl.startsWith('http')){
+    finalUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+finalUrl;
   }
   var color=fileColor(name);
-  return '<a href="'+finalUrl+'" target="_blank" rel="noopener noreferrer" '+
-    'onclick="event.stopPropagation()" '+
-    'style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;'+
-    'background:#f8fafc;color:'+color+';border:1.5px solid '+color+'33;border-radius:8px;'+
-    'font-size:12px;font-weight:600;text-decoration:none;cursor:pointer">'+
-    '<i class="fas '+fileIcon(name)+'" style="font-size:13px"></i>'+name+'</a>';
+  var displayName=name.length>25?name.substring(0,22)+'...':name;
+  return '<a href="'+finalUrl+'" target="_blank" rel="noopener noreferrer" '
+    +'onclick="event.stopPropagation()" '
+    +'title="'+name+'" '
+    +'style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;'
+    +'background:#fff;color:'+color+';border:1.5px solid '+color+'44;border-radius:8px;'
+    +'font-size:11.5px;font-weight:600;text-decoration:none;cursor:pointer;'
+    +'white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;'
+    +'box-shadow:0 1px 3px rgba(0,0,0,.06)">'
+    +'<i class="fas '+fileIcon(name)+'" style="font-size:12px;flex-shrink:0"></i>'
+    +displayName+'</a>';
 }
 
 function parseFilesJson(fileUrl, file){
@@ -3776,7 +3780,6 @@ function parseFilesJson(fileUrl, file){
 }
 
 function adminFilesHtml(t){
-  // اقرأ الملفات دائماً من fileUrl (أحدث مصدر)
   var files=[];
   if(t.fileUrl){
     try{
@@ -3785,15 +3788,16 @@ function adminFilesHtml(t){
     }catch(e){}
   }
   if(!files.length&&t.files&&t.files.length) files=t.files;
-  if(!files.length&&t.file&&t.fileUrl) files=[{name:t.file,url:t.fileUrl}];
+  if(!files.length&&t.file&&t.fileUrl&&t.fileUrl.startsWith('http')) files=[{name:t.file,url:t.fileUrl}];
   if(!files.length) return '';
   var links='';
   for(var i=0;i<files.length;i++){
     links+=renderFileLink(files[i].name,files[i].url);
   }
   return '<div style="margin-top:12px;background:#f0f9ff;border-radius:8px;padding:10px 12px">'
-    +'<div style="font-size:11px;font-weight:800;color:#0369a1;margin-bottom:7px"><i class="fas fa-shield-alt" style="margin-left:4px"></i>مرفقات الإدارة العليا ('+files.length+')</div>'
-    +'<div style="display:flex;flex-wrap:wrap;gap:6px">'+links+'</div></div>';
+    +'<div style="font-size:11px;font-weight:800;color:#0369a1;margin-bottom:8px">'
+    +'<i class="fas fa-shield-alt" style="margin-left:4px"></i>مرفقات الإدارة العليا ('+files.length+')</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:7px;overflow-x:auto;padding-bottom:4px">'+links+'</div></div>';
 }
 
 function userSubmitFilesHtml(comments){
@@ -3806,13 +3810,15 @@ function userSubmitFilesHtml(comments){
   var links='';
   for(var j=0;j<submitCmts.length;j++){
     var c=submitCmts[j];
-    links+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
+    links+='<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;flex-wrap:wrap">'
       +renderFileLink(c.submitFile.name,c.submitFile.url)
-      +'<span style="font-size:10px;color:#64748b">— '+c.author+' | '+c.time+'</span>'
+      +'<span style="font-size:10px;color:#64748b;background:#f1f5f9;padding:2px 7px;border-radius:20px">'
+      +c.author+' — '+c.time+'</span>'
       +'</div>';
   }
   return '<div style="margin-top:10px;background:#f0fdf4;border-radius:8px;padding:10px 12px">'
-    +'<div style="font-size:11px;font-weight:800;color:#16a34a;margin-bottom:7px"><i class="fas fa-paper-plane" style="margin-left:4px"></i>مرفقات التسليم ('+submitCmts.length+')</div>'
+    +'<div style="font-size:11px;font-weight:800;color:#16a34a;margin-bottom:8px">'
+    +'<i class="fas fa-paper-plane" style="margin-left:4px"></i>مرفقات التسليم ('+submitCmts.length+')</div>'
     +'<div>'+links+'</div></div>';
 }
 
