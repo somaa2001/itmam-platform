@@ -1828,6 +1828,7 @@ function openTaskModal(id){
     document.getElementById('fileName').textContent='اضغط لرفع ملف أو صورة';
     if(currentDept) document.getElementById('fDept').value=currentDept;
   }
+  fillSelects();
   showModal('taskModal');
 }
 function editTask(id){openTaskModal(id);}
