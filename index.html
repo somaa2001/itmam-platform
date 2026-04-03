@@ -1124,6 +1124,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
     <!-- رفع مرفق -->
     <div class="ig">
       <label>المرفق (اختياري)</label>
+      <div id="taskEditFilesList" style="margin-bottom:6px"></div>
       <label class="file-upload-area" id="fileLabel">
         <i class="fas fa-paperclip"></i>
         <span id="fileName">اضغط لرفع ملف أو صورة</span>
@@ -1223,9 +1224,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
     <div class="ig"><label>تاريخ انتهاء التسليم</label><input type="date" id="fKpiEnd"></div>
     <div class="ig">
       <label>مرفقات (يمكن إضافة أكثر من ملف)</label>
+      <div id="kpiEditFilesList" style="margin-bottom:6px"></div>
       <label class="file-upload-area">
         <i class="fas fa-paperclip"></i>
-        <span id="kpiFileName">اضغط لرفع ملفات (متعددة)</span>
+        <span id="kpiFileName">اضغط لإضافة ملفات جديدة</span>
         <input type="file" id="fKpiFile" multiple onchange="onKpiFilesChange(this)" style="display:none">
       </label>
       <div id="kpiFilesList" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px"></div>
@@ -1687,6 +1689,8 @@ function fillSelects(){
   if(deptEl){
     const allOpt=isAdminOrSup()?'<option value="الكل">🌐 للكل — جميع الإدارات</option>':'';
     deptEl.innerHTML=allOpt+opts;
+    // إذا كنا داخل إدارة معينة نُعيّنها تلقائياً (وليس "للكل")
+    if(currentDept && currentDept!=='all') deptEl.value=currentDept;
   }
   ['fUDept','fKpiDept'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
 }
@@ -1833,7 +1837,18 @@ function openTaskModal(id){
     document.getElementById('fDept').value=t.dept;
     document.getElementById('fStart').value=t.start||'';
     document.getElementById('fEnd').value=t.end||'';
+    // تحميل الملفات الحالية
+    // قراءة كل الملفات الموجودة
+    editingFiles=[];
+    try{
+      var pf=JSON.parse(t.fileUrl||'[]');
+      if(Array.isArray(pf)&&pf.length) editingFiles=pf;
+      else if(t.file&&t.fileUrl) editingFiles=[{name:t.file,url:t.fileUrl}];
+    }catch(e){if(t.file&&t.fileUrl) editingFiles=[{name:t.file,url:t.fileUrl}];}
+    renderEditFilesList('taskEditFilesList');
   } else {
+    editingFiles=[];
+    renderEditFilesList('taskEditFilesList');
     ['fTitle','fDesc','fRequired','fStart','fEnd','fSchedDate','fSchedTime'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
     document.getElementById('fStatus').value='review';
     document.getElementById('fPriority').value='normal';
@@ -1856,6 +1871,23 @@ async function saveTask(){
     if(currentTaskId){
       const t=tasks.find(t=>t.id===currentTaskId);
       const os=t.status;
+      // استخدام الملفات المحررة
+      var keepFile=editingFiles.length?editingFiles[0].name:(t.file||'');
+      var keepUrl=editingFiles.length?editingFiles[0].url:(t.fileUrl||'');
+      // إذا رُفع ملف جديد يُضاف للقائمة
+      var newFileInput=document.getElementById('fFile');
+      if(newFileInput&&newFileInput.files[0]){
+        var nf=newFileInput.files[0];
+        var sfn=sanitizeFileName(nf.name);
+        var npath=t.id+'/'+sfn;
+        var {data:nfd,error:nfe}=await db.storage.from('attachments').upload(npath,nf,{upsert:true});
+        if(!nfe&&nfd){
+          var {data:nud}=db.storage.from('attachments').getPublicUrl(npath);
+          var nurl=nud?.publicUrl||'https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+npath;
+          editingFiles.push({name:nf.name,url:nurl});
+          keepFile=nf.name;keepUrl=nurl;
+        }
+      }
       Object.assign(t,{
         title, desc:document.getElementById('fDesc').value,
         required:document.getElementById('fRequired').value,
@@ -1863,7 +1895,8 @@ async function saveTask(){
         priority:document.getElementById('fPriority').value,
         dept:document.getElementById('fDept').value,
         scheduleType:'immediate', start:document.getElementById('fStart').value,
-        end:document.getElementById('fEnd').value
+        end:document.getElementById('fEnd').value,
+        file:keepFile, fileUrl:keepUrl
       });
       const {error}=await db.from('tasks').update(taskToDb(t)).eq('id',currentTaskId);
       if(error){toast('خطأ في التحديث','err');console.error(error);}
@@ -2454,9 +2487,8 @@ async function saveKpiTask(){
     // ── تعديل مهمة موجودة ──
     const t=kpiTasks.find(t=>t.id===currentKpiId);
     if(!t){hideLoading();toast('لم يُعثر على المهمة','err');return;}
-    // دمج الملفات القديمة مع الجديدة
-    const oldFiles=t.files&&t.files.length?t.files:(t.file?[{name:t.file,url:t.fileUrl}]:[]);
-    const mergedFiles=[...oldFiles,...newFilesData];
+    // استخدام editingFiles (بعد الحذف) + الجديدة
+    const mergedFiles=[...editingFiles,...newFilesData];
     const firstFile=mergedFiles.length?mergedFiles[0]:{name:'',url:''};
     const updateData={
       title, indicator, criteria,
@@ -2831,18 +2863,20 @@ function editKpiTask(id){
   if(document.getElementById('fKpiCriteria'))document.getElementById('fKpiCriteria').value=t.criteria||'';
   if(document.getElementById('fKpiEnd'))document.getElementById('fKpiEnd').value=t.endDate||'';
   document.getElementById('fKpiDept').value=t.dept||'';
-  // عرض الملفات الحالية
-  const existingFiles=t.files&&t.files.length?t.files:(t.file?[{name:t.file,url:t.fileUrl}]:[]);
-  const listEl=document.getElementById('kpiFilesList');
-  if(listEl){
-    listEl.innerHTML=existingFiles.length?
-      '<div style="font-size:11px;color:#64748b;margin-bottom:3px">المرفقات الحالية:</div>'+
-      existingFiles.map(f=>'<a href="'+f.url+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#2563eb;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;text-decoration:none">'+
-        '<i class="fas fa-paperclip" style="font-size:10px"></i>'+f.name+'</a>').join('')
-      :'';
-  }
+  // تحميل الملفات الحالية في editingFiles
+  editingFiles=[];
+  if(t.files&&t.files.length) editingFiles=[...t.files];
+  else if(t.fileUrl){
+    try{
+      var pf=JSON.parse(t.fileUrl);
+      if(Array.isArray(pf)) editingFiles=pf;
+      else if(t.file&&t.fileUrl) editingFiles=[{name:t.file,url:t.fileUrl}];
+    }catch(e){if(t.file&&t.fileUrl) editingFiles=[{name:t.file,url:t.fileUrl}];}
+  } else if(t.file&&t.fileUrl) editingFiles=[{name:t.file,url:t.fileUrl}];
+  renderEditFilesList('kpiEditFilesList');
   const fnEl=document.getElementById('kpiFileName');
-  if(fnEl)fnEl.textContent=existingFiles.length?'إضافة ملفات جديدة (اختياري)':'اضغط لرفع ملفات';
+  if(fnEl)fnEl.textContent='إضافة ملفات جديدة (اختياري)';
+  const kfl=document.getElementById('kpiFilesList');if(kfl)kfl.innerHTML='';
   const fileInput=document.getElementById('fKpiFile');
   if(fileInput)fileInput.value='';
   currentKpiId=id;
@@ -3626,6 +3660,31 @@ function renderDeptDashboard(){
 // HELPERS
 // ══════════════════════════════════════════════
 // ── صلاحيات المشرف ──
+// ── إدارة ملفات التعديل ──
+var editingFiles = []; // الملفات الحالية عند التعديل
+
+function renderEditFilesList(listId){
+  var el=document.getElementById(listId);
+  if(!el)return;
+  if(!editingFiles.length){el.innerHTML='';return;}
+  var html='<div style="font-size:11px;color:#64748b;margin-bottom:4px">المرفقات الحالية (X للحذف):</div>';
+  for(var i=0;i<editingFiles.length;i++){
+    (function(idx,lid){
+      var f=editingFiles[idx];
+      html+='<div style="display:inline-flex;align-items:center;gap:5px;background:#f1f5f9;border:1px solid #e2e8f0;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;margin:2px">';
+      html+='<i class="fas '+fileIcon(f.name)+'" style="font-size:10px;color:'+fileColor(f.name)+'"></i>';
+      html+='<span>'+f.name+'</span>';
+      html+='<button data-i="'+idx+'" data-l="'+lid+'" onclick="removeEditFile(+this.dataset.i,this.dataset.l)" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:11px;padding:0 0 0 4px;font-weight:900">X</button>';
+      html+='</div>';
+    })(i,listId);
+  }
+  el.innerHTML=html;
+}
+function removeEditFile(idx,listId){
+  editingFiles.splice(idx,1);
+  renderEditFilesList(listId);
+}
+
 function sanitizeFileName(name){
   // استخدام اسم عشوائي بالكامل + امتداد الملف الأصلي فقط
   var parts = name.split('.');
