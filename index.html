@@ -1374,9 +1374,6 @@ const db = window.supabase.createClient(SURL, SKEY);
 // ══════════════════════════════════════════════
 const DEPTS=[
   {name:'إدارة المشاعر المقدسة',icon:'fa-kaaba',cls:'hl1'},
-  {name:'إدارة منى',icon:'fa-campground',parent:'إدارة المشاعر المقدسة'},
-  {name:'إدارة عرفات',icon:'fa-mountain',parent:'إدارة المشاعر المقدسة'},
-  {name:'إدارة مزدلفة',icon:'fa-moon',parent:'إدارة المشاعر المقدسة'},
   {name:'إدارة التسكين',icon:'fa-bed'},
   {name:'إدارة الإعاشة',icon:'fa-utensils'},
   {name:'إدارة النقل والمواصلات',icon:'fa-bus'},
@@ -1738,7 +1735,7 @@ function renderDepts(filter){
     const newCnt=tasks.filter(t=>t.dept===d.name&&t.isNew).length;
     const supCnt=tasks.filter(t=>t.dept===d.name&&t.needSupport).length;
     return '<div class="dept-card '+(d.cls||'')+'" onclick="openDept(\''+d.name.replace(/'/g,"\\'")+'\')">' +
-      '<div class="dept-left"><div class="dept-ico"><i class="fas '+d.icon+'"></i></div><div><span>'+d.name+'</span>'+(d.parent?'<div style="font-size:10px;color:#94a3b8;margin-top:2px">↳ تابعة لـ '+d.parent+'</div>':'')+'</div></div>' +
+      '<div class="dept-left"><div class="dept-ico"><i class="fas '+d.icon+'"></i></div><span>'+d.name+'</span></div>' +
       '<div style="display:flex;align-items:center;gap:6px">' +
         (newCnt?'<span style="background:#fef2f2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;animation:pulse 1.5s infinite">'+newCnt+' جديدة</span>':'')+
         (supCnt?'<span style="background:#fef3c7;color:#d97706;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">🆘 '+supCnt+'</span>':'')+
@@ -2995,7 +2992,7 @@ let chatPolling=null;
 let presencePolling=null;
 let onlineUsers=new Set();
 
-const DEPT_COLORS={'إدارة المشاعر المقدسة':'#8b5cf6','إدارة منى':'#7c3aed','إدارة عرفات':'#6d28d9','إدارة مزدلفة':'#5b21b6','إدارة التسكين':'#f59e0b','إدارة الإعاشة':'#22c55e','إدارة النقل والمواصلات':'#3b82f6','إدارة العمليات والبلاغات':'#ef4444','إدارة خدمة العملاء':'#8b5cf6','الإدارة النسائية':'#ec4899','إدارة تجربة الحاج':'#0ea5e9','بطاقات نسك':'#10b981'};
+const DEPT_COLORS={'إدارة المشاعر المقدسة':'#8b5cf6','إدارة التسكين':'#f59e0b','إدارة الإعاشة':'#22c55e','إدارة النقل والمواصلات':'#3b82f6','إدارة العمليات والبلاغات':'#ef4444','إدارة خدمة العملاء':'#8b5cf6','الإدارة النسائية':'#ec4899','إدارة تجربة الحاج':'#0ea5e9','بطاقات نسك':'#10b981'};
 function deptColor(d){return DEPT_COLORS[d]||'#64748b';}
 
 async function updatePresence(){
