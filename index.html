@@ -622,7 +622,13 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
     <h3 style="text-align:center;font-size:17px;font-weight:700;color:var(--primary);margin-bottom:4px">تسجيل الدخول</h3>
     <p style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:22px">أدخل بيانات حسابك للدخول إلى المنصة</p>
     <div class="ig"><label>اسم المستخدم</label><input type="text" id="inpUser" placeholder="أدخل اسم المستخدم"></div>
-    <div class="ig"><label>كلمة المرور</label><input type="password" id="inpPass" placeholder="أدخل كلمة المرور"></div>
+    <div class="ig"><label>كلمة المرور</label>
+      <div style="position:relative">
+        <input type="password" id="inpPass" placeholder="أدخل كلمة المرور" style="padding-left:40px">
+        <button type="button" onclick="togglePassVis()" id="btnEye" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;font-size:16px;padding:0"><i class="fas fa-eye" id="eyeIcon"></i></button>
+      </div>
+      <div id="loginError" style="display:none;margin-top:6px;background:#fee2e2;color:#dc2626;padding:8px 12px;border-radius:8px;font-size:12.5px;font-weight:600"><i class="fas fa-exclamation-circle" style="margin-left:5px"></i>اسم المستخدم أو كلمة المرور غير صحيحة</div>
+    </div>
     <button class="btn-login" id="btnLogin">دخول</button>
     <div class="login-hint" id="loginHint"></div>
   </div>
@@ -1476,6 +1482,12 @@ window.onload=function(){
   document.getElementById('btnEnter').onclick=()=>showModal('loginOverlay');
   document.getElementById('btnLogin').onclick=login;
   document.getElementById('inpPass').onkeypress=e=>{if(e.key==='Enter')login();};
+  document.getElementById('inpPass').oninput=()=>{
+    const e=document.getElementById('loginError');if(e)e.style.display='none';
+  };
+  document.getElementById('inpUser').oninput=()=>{
+    const e=document.getElementById('loginError');if(e)e.style.display='none';
+  };
   document.getElementById('sbFoot').onclick=logout;
   // استعادة الجلسة تلقائياً
   try{
@@ -1549,7 +1561,16 @@ async function login(){
   showLoading();
   try{
     const {data,error}=await db.from('users').select('*').eq('username',username).eq('user_password',pass).single();
-    if(error||!data){hideLoading();toast('اسم المستخدم أو كلمة المرور غير صحيحة','err');return;}
+    if(error||!data){
+      hideLoading();
+      const errEl=document.getElementById('loginError');
+      if(errEl){errEl.style.display='block';}
+      document.getElementById('inpPass').style.borderColor='#ef4444';
+      setTimeout(()=>{document.getElementById('inpPass').style.borderColor='';},3000);
+      return;
+    }
+    const errEl2=document.getElementById('loginError');
+    if(errEl2) errEl2.style.display='none';
     currentUser=mapUser(data);
     // حفظ الجلسة في localStorage
     localStorage.setItem('itmam_session', JSON.stringify({username:data.username, password:pass}));
@@ -2661,8 +2682,8 @@ function renderKpiTasks(){
     '<div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">'+
       (isAdmin&&!isSupervisor?'<button class="cabt" onclick="editKpiTask(\''+t.id+'\')">تعديل</button>':'')+
       (isAdmin&&!isSupervisor?'<button class="cabt del" onclick="deleteKpiTask(\''+t.id+'\')">حذف</button>':'')+
-      (isAdmin&&!isSupervisor?'<button class="cabt" onclick="kpiChangeStatus(\''+t.id+'\',\'accepted\')" style="border-color:#86efac;color:#16a34a;background:#f0fdf4">✓ قبول</button>':'')+
-      (isAdmin&&!isSupervisor?'<button class="cabt" onclick="kpiChangeStatus(\''+t.id+'\',\'rejected\')" style="border-color:#fca5a5;color:#dc2626;background:#fef2f2">✗ رفض</button>':'')+
+      (isAdmin?'<button class="cabt" onclick="kpiChangeStatus(\''+t.id+'\',\'accepted\')" style="border-color:#86efac;color:#16a34a;background:#f0fdf4">✓ قبول</button>':'')+
+      (isAdmin?'<button class="cabt" onclick="kpiChangeStatus(\''+t.id+'\',\'rejected\')" style="border-color:#fca5a5;color:#dc2626;background:#fef2f2">✗ رفض</button>':'')+
       (!isAdmin?(isLocked?'<button class="cabt" disabled style="opacity:.5;font-size:11px;cursor:not-allowed"><i class="fas fa-lock" style="margin-left:3px"></i>'+chkSubmit.reason+'</button>':(rem<=0?'<button class="cabt" disabled style="opacity:.4"><i class="fas fa-lock" style="margin-left:3px"></i>انتهت المحاولات</button>':'<button class="cabt submit" onclick="openKpiSubmitModal(\''+t.id+'\')"><i class="fas fa-paper-plane" style="margin-left:4px"></i>تسليم ('+rem+')</button>')):'')+
       (!isAdmin?'<button class="cabt support'+(t.needSupport?' active':'')+'" onclick="toggleKpiSupport(\''+t.id+'\')">🆘 دعم</button>':'')+
       '<button class="cabt" onclick="viewKpiTask(\''+t.id+'\')">عرض</button>'+
@@ -3843,6 +3864,18 @@ function onKpiFilesChange(input){
     '</div>'
   ).join('');
   document.getElementById('kpiFileName').textContent=input.files.length+' ملف مختار';
+}
+
+function togglePassVis(){
+  var inp=document.getElementById('inpPass');
+  var icon=document.getElementById('eyeIcon');
+  if(inp.type==='password'){
+    inp.type='text';
+    icon.className='fas fa-eye-slash';
+  } else {
+    inp.type='password';
+    icon.className='fas fa-eye';
+  }
 }
 
 function onRoleChange(role){
