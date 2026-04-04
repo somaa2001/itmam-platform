@@ -1151,6 +1151,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
       <button class="btn-ok" id="btnApprove" style="background:#16a34a;display:none" onclick="changeStatus('accepted')">✓ قبول</button>
       <button class="btn-ok" id="btnReject" style="background:#dc2626;display:none" onclick="changeStatus('rejected')">✗ رفض</button>
       <button class="btn-ok" id="btnIncomplete" style="background:#f59e0b;display:none" onclick="changeStatus('incomplete')">⚠ غير مكتملة</button>
+      <button class="btn-ok" id="btnReview" style="background:#6366f1;display:none" onclick="changeStatus('review')">↩ إعادة للمراجعة</button>
       <button class="btn-cc" onclick="hideModal('viewModal')">إغلاق</button>
     </div>
     <div id="userActions" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
@@ -1989,7 +1990,8 @@ async function changeStatus(status){
   if(status==='accepted') t.approveTime=ts;
   if(status==='rejected') t.rejectTime=ts;
   if(status==='incomplete') t.rejectTime=ts;
-  const msgs={accepted:'✅ تم قبول المهمة | وقت القبول: '+ts, rejected:'❌ تم رفض المهمة | وقت الرفض: '+ts, incomplete:'⚠️ المهمة غير مكتملة — يرجى إعادة التسليم | الوقت: '+ts};
+  if(status==='review'){t.approveTime=null;t.rejectTime=null;}
+  const msgs={accepted:'✅ تم قبول المهمة | وقت القبول: '+ts, rejected:'❌ تم رفض المهمة | وقت الرفض: '+ts, incomplete:'⚠️ المهمة غير مكتملة — يرجى إعادة التسليم | الوقت: '+ts, review:'↩ تمت إعادة المهمة للمراجعة | الوقت: '+ts};
   const msg=msgs[status]||'تم تغيير الحالة';
   t.comments.push({author:currentUser.name,txt:msg,time:ts,type:'decision'});
   // اذا غير مكتملة أعد عداد التسليم لاتاحة تسليم جديد
@@ -2134,9 +2136,12 @@ function viewTask(id){
   // الادمن يرى أزرار القرار فقط بعد تسليم المهمة
   const submitted=t.submitCount>0;
   // الأدمن والمشرف يريان الأزرار دائماً
+  var isAccRej=t.status==='accepted'||t.status==='rejected';
   document.getElementById('btnApprove').style.display=isAdmin?'block':'none';
   document.getElementById('btnReject').style.display=isAdmin?'block':'none';
   document.getElementById('btnIncomplete').style.display=(isAdmin&&submitted)?'block':'none';
+  const brEl=document.getElementById('btnReview');
+  if(brEl) brEl.style.display=(isAdmin&&isAccRej)?'block':'none';
   document.getElementById('userActions').style.display=!isAdmin?'block':'none';
   if(!isAdmin){
     const sb=document.getElementById('btnRequestSupport');
