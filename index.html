@@ -2133,8 +2133,9 @@ function viewTask(id){
   document.getElementById('adminActions').style.display=isAdmin?'flex':'none';
   // الادمن يرى أزرار القرار فقط بعد تسليم المهمة
   const submitted=t.submitCount>0;
-  document.getElementById('btnApprove').style.display=(isAdmin&&submitted)?'block':'none';
-  document.getElementById('btnReject').style.display=(isAdmin&&submitted)?'block':'none';
+  // الأدمن والمشرف يريان الأزرار دائماً
+  document.getElementById('btnApprove').style.display=isAdmin?'block':'none';
+  document.getElementById('btnReject').style.display=isAdmin?'block':'none';
   document.getElementById('btnIncomplete').style.display=(isAdmin&&submitted)?'block':'none';
   document.getElementById('userActions').style.display=!isAdmin?'block':'none';
   if(!isAdmin){
