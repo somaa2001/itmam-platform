@@ -1075,7 +1075,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
   <div class="modal-box">
     <div class="modal-hdr">
       <div class="modal-ttl" id="taskModalTitle">إضافة مهمة جديدة</div>
-      <button class="modal-cls" onclick="hideModal('taskModal')">×</button>
+      <button class="modal-cls" onclick="hideModal('taskModal');editingFiles=[];var fi=document.getElementById('fFile');if(fi)fi.value='';">×</button>
     </div>
     <div class="ig"><label>عنوان المهمة</label><input type="text" id="fTitle" placeholder="أدخل عنوان المهمة"></div>
     <div class="ig"><label>الوصف</label><textarea id="fDesc" placeholder="أدخل وصف المهمة"></textarea></div>
@@ -1142,7 +1142,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
     </div>
     <div class="modal-foot">
       <button class="btn-ok" id="btnSaveTask" onclick="saveTask()">إضافة المهمة</button>
-      <button class="btn-cc" onclick="hideModal('taskModal')">إلغاء</button>
+      <button class="btn-cc" onclick="hideModal('taskModal');editingFiles=[];var fi=document.getElementById('fFile');if(fi)fi.value='';">إلغاء</button>
     </div>
   </div>
 </div>
@@ -1863,6 +1863,7 @@ function handleFileChange(input){
 }
 
 function openTaskModal(id){
+  editingFiles=[]; // ← تصفير فوري في كل مرة
   currentTaskId=id||null;
   document.getElementById('taskModalTitle').textContent=id?'تعديل المهمة':'إضافة مهمة جديدة';
   document.getElementById('btnSaveTask').textContent=id?'حفظ التعديل':'إضافة المهمة';
@@ -1889,6 +1890,8 @@ function openTaskModal(id){
   } else {
     editingFiles=[];
     renderEditFilesList('taskEditFilesList');
+    const fiReset=document.getElementById('fFile');if(fiReset)fiReset.value='';
+    document.getElementById('fileName').textContent='اضغط لرفع ملف أو صورة';
     ['fTitle','fDesc','fRequired','fStart','fEnd','fSchedDate','fSchedTime'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
     document.getElementById('fStatus').value='review';
     document.getElementById('fPriority').value='normal';
@@ -1899,6 +1902,7 @@ function openTaskModal(id){
     if(currentDept) document.getElementById('fDept').value=currentDept;
   }
   fillSelects();
+  var _fi=document.getElementById('fFile');if(_fi)_fi.value='';
   showModal('taskModal');
 }
 function editTask(id){openTaskModal(id);}
@@ -1989,13 +1993,14 @@ async function saveTask(){
         };
         const {error}=await db.from('tasks').insert(taskToDb(newTask));
         if(!error){tasks.unshift(newTask);addedCount++;}
+        await new Promise(r=>setTimeout(r,5)); // تأخير بسيط لضمان نيد فريد
       }
       if(addedCount>0){
         addNotif('plus-circle','g','📋 مهمة جديدة: "'+title+'"'+(dept==='الكل'?' → جميع الإدارات ('+addedCount+')':' → '+dept),'','task');
         toast(dept==='الكل'?'تمت الإضافة لجميع الإدارات ('+addedCount+')':'تمت الإضافة ✅');
       } else {toast('خطأ في الإضافة','err');}
     }
-    hideModal('taskModal'); refresh();
+    hideModal('taskModal'); editingFiles=[]; document.getElementById('fFile').value=''; refresh();
   } catch(e){toast('خطأ في الاتصال: '+e.message,'err');console.error(e);}
   hideLoading();
 }
@@ -3198,7 +3203,14 @@ function updateSideBadges(){
 // MODALS
 // ══════════════════════════════════════════════
 function showModal(id){document.getElementById(id).classList.add('show');}
-function hideModal(id){document.getElementById(id).classList.remove('show');}
+function hideModal(id){
+  document.getElementById(id).classList.remove('show');
+  if(id==='taskModal'||id==='kpiModal'){
+    editingFiles=[];
+    var fi=document.getElementById('fFile');if(fi)fi.value='';
+    var fk=document.getElementById('kpiFile');if(fk)fk.value='';
+  }
+}
 
 // ══════════════════════════════════════════════
 // TOAST
