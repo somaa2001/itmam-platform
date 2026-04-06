@@ -3246,20 +3246,51 @@ function updateStats(){
 }
 
 function updateAchBars(){
+  const today=new Date(); today.setHours(23,59,59,0);
   ['achBars','kpiAchBars'].forEach(cid=>{
     const el=document.getElementById(cid);if(!el)return;
-    const dn=[...new Set(tasks.map(t=>t.dept))].slice(0,8);
+    // كل الإدارات الموجودة في DEPTS
+    const dn=DEPTS.map(d=>d.name);
     if(!dn.length){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">لا توجد بيانات بعد</div>';return;}
     el.innerHTML=dn.map(d=>{
       const dt=tasks.filter(t=>t.dept===d);
-      const done=dt.filter(t=>['completed','accepted'].includes(t.status)).length;
-      const rej=dt.filter(t=>t.status==='rejected').length;
-      const pct=dt.length?Math.round(done/dt.length*100):0;
-      const bc=pct>=70?'green':pct>=40?'yellow':'red';
+      if(!dt.length) return ''; // لا تعرض إدارة بدون مهام
+      const total=dt.length;
+      const doneAll=dt.filter(t=>['completed','accepted'].includes(t.status)).length;
+      const pctAll=Math.round(doneAll/total*100);
+      // المهام المنتهي موعدها أو المنجزة
+      const expired=dt.filter(t=>{
+        if(['completed','accepted'].includes(t.status)) return true;
+        if(!t.end) return false;
+        const ed=new Date(t.end); return ed<=today;
+      });
+      const doneExp=expired.filter(t=>['completed','accepted'].includes(t.status)).length;
+      const pctCur=expired.length?Math.round(doneExp/expired.length*100):100;
+      const pending=dt.filter(t=>{
+        if(['completed','accepted','rejected'].includes(t.status)) return false;
+        if(!t.end) return true;
+        return new Date(t.end)>today;
+      }).length;
+      const bcAll=pctAll>=70?'green':pctAll>=40?'yellow':'red';
+      const bcCur=pctCur>=70?'green':pctCur>=40?'yellow':'red';
       const sn=d.replace('إدارة ','').replace('فريق ','');
-      return '<div class="ach-item"><div class="ach-hdr"><span class="ach-name" style="font-size:11.5px">'+sn+'</span><span class="ach-meta">✓'+done+' X'+rej+' '+dt.length+' مهمة</span></div>'+
-        '<div class="ach-bar-wrap"><div class="ach-bar '+bc+'" style="width:'+pct+'%">'+pct+'%</div></div></div>';
-    }).join('');
+      return '<div class="ach-item" style="margin-bottom:14px">'+
+        '<div class="ach-hdr" style="margin-bottom:5px"><span class="ach-name" style="font-size:12px">'+sn+'</span>'+
+        '<span class="ach-meta">'+total+' مهمة'+(pending?' | <span style="color:#f59e0b">⏳'+pending+' متبقية</span>':'')+'</span></div>'+
+        // مؤشر المهام الحالية المنتهية
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'+
+          '<span style="font-size:10px;color:var(--muted);width:80px;flex-shrink:0">الحالي المنجز</span>'+
+          '<div class="ach-bar-wrap" style="flex:1"><div class="ach-bar '+bcCur+'" style="width:'+pctCur+'%">'+pctCur+'%</div></div>'+
+          '<span style="font-size:10px;font-weight:700;color:'+(pctCur>=70?'#16a34a':pctCur>=40?'#d97706':'#dc2626')+'">'+doneExp+'/'+(expired.length||1)+'</span>'+
+        '</div>'+
+        // مؤشر الإجمالي
+        '<div style="display:flex;align-items:center;gap:6px">'+
+          '<span style="font-size:10px;color:var(--muted);width:80px;flex-shrink:0">الإجمالي</span>'+
+          '<div class="ach-bar-wrap" style="flex:1;height:6px!important"><div class="ach-bar '+bcAll+'" style="width:'+pctAll+'%;height:6px!important;font-size:9px">'+pctAll+'%</div></div>'+
+          '<span style="font-size:10px;color:var(--muted)">'+doneAll+'/'+total+'</span>'+
+        '</div>'+
+      '</div>';
+    }).filter(Boolean).join('');
   });
 }
 
