@@ -3756,11 +3756,13 @@ function renderAdminKpiDashboard(){
 
   // مقارنة الإدارات — HTML bars مع مؤشرين
   const todayKpi=new Date(); todayKpi.setHours(23,59,59,0);
-  const depts=DEPTS.map(d=>d.name).filter(d=>list.some(t=>t.dept===d));
+  const depts=DEPTS.map(d=>d.name).filter(d=>kpiTasks.some(t=>t.dept===d));
   const akdBarsEl=document.getElementById('akdDeptBars');
   if(akdBarsEl){
-    akdBarsEl.innerHTML=depts.map(d=>{
-      const dt=list.filter(t=>t.dept===d);
+    // يستخدم kpiTasks الكاملة لضمان دقة النسب بغض النظر عن الفلتر
+    const allDepts=DEPTS.map(d=>d.name).filter(d=>kpiTasks.some(t=>t.dept===d));
+    akdBarsEl.innerHTML=allDepts.map(d=>{
+      const dt=kpiTasks.filter(t=>t.dept===d);
       const tot=dt.length||1;
       const doneAll=dt.filter(t=>['completed','accepted'].includes(t.status)).length;
       const pctAll=Math.round(doneAll/tot*100);
