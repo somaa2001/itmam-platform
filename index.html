@@ -3387,12 +3387,20 @@ function downloadKpiReport(){
   var todayStr=new Date().toISOString().split('T')[0];
   var todayH=getH(todayStr);
 
+  var todayRep=new Date();todayRep.setHours(23,59,59,0);
   var aT=tasks.length,aD=tasks.filter(function(t){return ['completed','accepted'].includes(t.status);}).length;
   var aRej=tasks.filter(function(t){return t.status==='rejected';}).length;
   var aRev=tasks.filter(function(t){return t.status==='review'&&(t.submitCount||0)>0;}).length;
-  var aPend=tasks.filter(function(t){return !(t.submitCount||0);}).length;
+  var aPend=tasks.filter(function(t){return !['completed','accepted','rejected'].includes(t.status)&&(!t.end||new Date(t.end)>todayRep);}).length;
+  var aExpired=tasks.filter(function(t){return ['completed','accepted'].includes(t.status)||(t.end&&new Date(t.end)<=todayRep);});
+  var aDoneExp=aExpired.filter(function(t){return ['completed','accepted'].includes(t.status);}).length;
+  var aPctCur=aExpired.length?Math.round(aDoneExp/aExpired.length*100):100;
   var aPct=aT?Math.round(aD/aT*100):0;
   var kT=kpiTasks.length,kD=kpiTasks.filter(function(t){return ['completed','accepted'].includes(t.status);}).length;
+  var kExpired=kpiTasks.filter(function(t){return ['completed','accepted'].includes(t.status)||(t.end&&new Date(t.end)<=todayRep);});
+  var kDoneExp=kExpired.filter(function(t){return ['completed','accepted'].includes(t.status);}).length;
+  var kPctCur=kExpired.length?Math.round(kDoneExp/kExpired.length*100):100;
+  var kPend=kpiTasks.filter(function(t){return !['completed','accepted','rejected'].includes(t.status)&&(!t.end||new Date(t.end)>todayRep);}).length;
   var kRej=kpiTasks.filter(function(t){return t.status==='rejected';}).length;
   var kRev=kpiTasks.filter(function(t){return t.status==='review'&&(t.submitCount||0)>0;}).length;
   var kPend=kpiTasks.filter(function(t){return !(t.submitCount||0);}).length;
@@ -3400,10 +3408,31 @@ function downloadKpiReport(){
   var jT=kpiTasks.filter(function(t){return t.criteria==='جودة الخدمات';}),jD=jT.filter(function(t){return ['completed','accepted'].includes(t.status);}).length,jPct=jT.length?Math.round(jD/jT.length*100):0;
   var iT=kpiTasks.filter(function(t){return t.criteria==='الامتثال والالتزام';}),iD=iT.filter(function(t){return ['completed','accepted'].includes(t.status);}).length,iPct=iT.length?Math.round(iD/iT.length*100):0;
 
+  var todayR=new Date();todayR.setHours(23,59,59,0);
   var dS={};
-  tasks.forEach(function(t){if(!t.dept)return;if(!dS[t.dept])dS[t.dept]={total:0,done:0,rev:0,rej:0};dS[t.dept].total++;if(['completed','accepted'].includes(t.status))dS[t.dept].done++;else if(t.status==='review'&&(t.submitCount||0)>0)dS[t.dept].rev++;else if(t.status==='rejected')dS[t.dept].rej++;});
-  var kS={};
-  kpiTasks.forEach(function(t){if(!t.dept)return;if(!kS[t.dept])kS[t.dept]={total:0,done:0,rev:0,rej:0};kS[t.dept].total++;if(['completed','accepted'].includes(t.status))kS[t.dept].done++;else if(t.status==='review'&&(t.submitCount||0)>0)kS[t.dept].rev++;else if(t.status==='rejected')kS[t.dept].rej++;});
+  tasks.forEach(function(t){
+    if(!t.dept)return;
+    if(!dS[t.dept])dS[t.dept]={total:0,done:0,rev:0,rej:0,doneExp:0,expTotal:0,pending:0};
+    dS[t.dept].total++;
+    var isExp=['completed','accepted'].includes(t.status)||(t.end&&new Date(t.end)<=todayR);
+    if(['completed','accepted'].includes(t.status)){dS[t.dept].done++;dS[t.dept].doneExp++;if(isExp)dS[t.dept].expTotal++;}
+    else if(t.status==='review'&&(t.submitCount||0)>0)dS[t.dept].rev++;
+    else if(t.status==='rejected')dS[t.dept].rej++;
+    else if(t.end&&new Date(t.end)<=todayR){dS[t.dept].expTotal++;}
+    else{dS[t.dept].pending++;}
+  });
+    var kS={};
+  kpiTasks.forEach(function(t){
+    if(!t.dept)return;
+    if(!kS[t.dept])kS[t.dept]={total:0,done:0,rev:0,rej:0,doneExp:0,expTotal:0,pending:0};
+    kS[t.dept].total++;
+    var isExpK=['completed','accepted'].includes(t.status)||(t.end&&new Date(t.end)<=todayR);
+    if(['completed','accepted'].includes(t.status)){kS[t.dept].done++;kS[t.dept].doneExp++;if(isExpK)kS[t.dept].expTotal++;}
+    else if(t.status==='review'&&(t.submitCount||0)>0)kS[t.dept].rev++;
+    else if(t.status==='rejected')kS[t.dept].rej++;
+    else if(t.end&&new Date(t.end)<=todayR){kS[t.dept].expTotal++;}
+    else{kS[t.dept].pending++;}
+  });
 
   function pC(p){return p>=70?'#16a34a':p>=40?'#d97706':'#dc2626';}
   function circ(pct,color,sz){
@@ -3421,14 +3450,26 @@ function downloadKpiReport(){
     return '<span style="'+c+';padding:2px 9px;border-radius:12px;font-size:10px;font-weight:700">'+lbl+'</span>';
   }
   function dRow(dept,s){
-    var p=s.total?Math.round(s.done/s.total*100):0;
+    var pAll=s.total?Math.round(s.done/s.total*100):0;
+    var pCur=s.expTotal?Math.round(s.doneExp/s.expTotal*100):100;
     return '<tr><td style="text-align:right;font-weight:600;padding:7px 10px;font-size:12px">'+dept+'</td>'
       +'<td>'+s.total+'</td><td style="color:#16a34a;font-weight:700">'+s.done+'</td>'
       +'<td style="color:#d97706">'+s.rev+'</td><td style="color:#dc2626">'+s.rej+'</td>'
-      +'<td><div style="display:flex;align-items:center;gap:6px">'
-      +'<div style="flex:1;background:#e2e8f0;border-radius:50px;height:7px;overflow:hidden">'
-      +'<div style="background:'+pC(p)+';height:100%;width:'+p+'%;border-radius:50px"></div></div>'
-      +'<span style="font-weight:800;color:'+pC(p)+';font-size:11px;min-width:32px">'+p+'%</span></div></td></tr>';
+      +'<td style="color:#2563eb;font-weight:700">'+(s.pending||0)+'</td>'
+      +'<td><div style="display:flex;flex-direction:column;gap:3px">'
+        +'<div style="display:flex;align-items:center;gap:4px">'
+          +'<span style="font-size:9px;color:#64748b;width:36px">الحالي</span>'
+          +'<div style="flex:1;background:#e2e8f0;border-radius:4px;height:6px;overflow:hidden">'
+            +'<div style="background:'+pC(pCur)+';height:100%;width:'+pCur+'%"></div></div>'
+          +'<span style="font-size:10px;font-weight:700;color:'+pC(pCur)+'">'+pCur+'%</span>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:4px">'
+          +'<span style="font-size:9px;color:#64748b;width:36px">الكل</span>'
+          +'<div style="flex:1;background:#e2e8f0;border-radius:4px;height:4px;overflow:hidden">'
+            +'<div style="background:'+pC(pAll)+'66;height:100%;width:'+pAll+'%"></div></div>'
+          +'<span style="font-size:9.5px;color:#94a3b8">'+pAll+'%</span>'
+        +'</div>'
+      +'</div></td></tr>';
   }
   function kRow(t,i){
     var eh=t.endDate?getH(t.endDate):'—';
@@ -3485,8 +3526,10 @@ function downloadKpiReport(){
     +'<div class="body">'
     +'<div class="sec">🎯 مؤشرات الإنجاز الكلية</div>'
     +'<div class="circ-row">'
-      +'<div class="ci">'+circ(aPct,pC(aPct),100)+'<div class="cl">المهام العادية</div><div class="cs">'+aD+' من '+aT+'</div></div>'
-      +'<div class="ci">'+circ(kPct,pC(kPct),100)+'<div class="cl">مؤشرات الدليل</div><div class="cs">'+kD+' من '+kT+'</div></div>'
+      +'<div class="ci">'+circ(aPctCur,pC(aPctCur),100)+'<div class="cl">المهام (الحالي)</div><div class="cs">'+aDoneExp+' / '+aExpired.length+' | ⏳'+aPend+'</div></div>'
+      +'<div class="ci">'+circ(aPct,pC(aPct),100)+'<div class="cl">المهام (الإجمالي)</div><div class="cs">'+aD+' من '+aT+'</div></div>'
+      +'<div class="ci">'+circ(kPctCur,pC(kPctCur),100)+'<div class="cl">المؤشرات (الحالي)</div><div class="cs">'+kDoneExp+' / '+kExpired.length+' | ⏳'+kPend+'</div></div>'
+      +'<div class="ci">'+circ(kPct,pC(kPct),100)+'<div class="cl">المؤشرات (الإجمالي)</div><div class="cs">'+kD+' من '+kT+'</div></div>'
       +'<div class="ci">'+circ(jPct,'#7c3aed',100)+'<div class="cl">جودة الخدمات</div><div class="cs">'+jD+' من '+jT.length+'</div></div>'
       +'<div class="ci">'+circ(iPct,'#16a34a',100)+'<div class="cl">الامتثال والالتزام</div><div class="cs">'+iD+' من '+iT.length+'</div></div>'
     +'</div>'
@@ -3500,7 +3543,7 @@ function downloadKpiReport(){
       +'<div class="card" style="border-top:4px solid #d1ae37"><div style="font-size:24px;font-weight:900;color:'+pC(aPct)+';margin-bottom:4px">'+aPct+'%</div><div style="font-size:10px;color:#64748b;font-weight:700">الإنجاز</div></div>'
     +'</div>'
     +'<div class="cbox"><div class="ct">أداء الإدارات — المهام العادية</div>'
-    +'<table><thead><tr><th style="text-align:right">الإدارة</th><th>الإجمالي</th><th>مكتملة</th><th>مراجعة</th><th>مرفوضة</th><th style="width:160px">نسبة الإنجاز</th></tr></thead><tbody>'+dSRows+'</tbody></table></div>'
+    +'<table><thead><tr><th style="text-align:right">الإدارة</th><th>الإجمالي</th><th>مكتملة</th><th>مراجعة</th><th>مرفوضة</th><th style="color:#93c5fd">⏳متبقية</th><th style="width:180px">الحالي / الإجمالي</th></tr></thead><tbody>'+dSRows+'</tbody></table></div>'
     +'<div style="page-break-before:always;padding-top:20px"></div>'
     +'<div class="sec">📊 مؤشرات الدليل — حج عام 1447</div>'
     +'<div class="cards">'
@@ -3530,7 +3573,7 @@ function downloadKpiReport(){
         +'</div></div></div>'
     +'</div>'
     +'<div class="cbox" style="margin-bottom:16px"><div class="ct">أداء الإدارات — مؤشرات الدليل</div>'
-    +'<table><thead><tr><th style="text-align:right">الإدارة</th><th>الإجمالي</th><th>مكتملة</th><th>مراجعة</th><th>مرفوضة</th><th style="width:160px">نسبة الإنجاز</th></tr></thead><tbody>'+kSRows+'</tbody></table></div>'
+    +'<table><thead><tr><th style="text-align:right">الإدارة</th><th>الإجمالي</th><th>مكتملة</th><th>مراجعة</th><th>مرفوضة</th><th style="color:#93c5fd">⏳متبقية</th><th style="width:180px">الحالي / الإجمالي</th></tr></thead><tbody>'+kSRows+'</tbody></table></div>'
     +'<div style="page-break-before:always;padding-top:20px"></div>'
     +'<div class="sec">📋 تفاصيل مهام مؤشرات الدليل</div>'
     +'<table><thead><tr><th>#</th><th style="text-align:right;width:35%">عنوان المؤشر</th><th style="text-align:right">الإدارة</th><th>المعيار</th><th>الانتهاء</th><th>الحالة</th></tr></thead><tbody>'+kpiRows+'</tbody></table>'
