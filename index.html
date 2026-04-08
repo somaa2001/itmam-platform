@@ -940,7 +940,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
         <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px">
           <div class="dcard">
             <div class="dcard-title"><i class="fas fa-chart-bar" style="color:var(--blue)"></i> مقارنة الإدارات — نسب الإنجاز</div>
-            <div style="height:230px;position:relative"><canvas id="akdDeptChart"></canvas></div>
+            <div id="akdDeptBars" style="max-height:260px;overflow-y:auto;padding:4px 2px"></div>
           </div>
           <div class="dcard">
             <div class="dcard-title"><i class="fas fa-chart-pie" style="color:var(--purple)"></i> توزيع المعايير</div>
@@ -3313,11 +3313,12 @@ function initCharts(){
 }
 
 function renderDashCharts(){
-  const dn=[...new Set(tasks.map(t=>t.dept))].slice(0,6);
+  const today0=new Date(); today0.setHours(23,59,59,0);
+  const dn=DEPTS.map(d=>d.name).filter(d=>tasks.some(t=>t.dept===d));
   const sn=dn.map(d=>d.replace('إدارة ','').replace('فريق ',''));
   const doneD=dn.map(d=>tasks.filter(t=>t.dept===d&&['completed','accepted'].includes(t.status)).length);
   const rejD=dn.map(d=>tasks.filter(t=>t.dept===d&&t.status==='rejected').length);
-  const urgD=dn.map(d=>tasks.filter(t=>t.dept===d&&t.priority==='urgent').length);
+  const urgD=dn.map(d=>tasks.filter(t=>t.dept===d&&t.priority==='urgent'&&!['completed','accepted'].includes(t.status)).length);
   const cbd=document.getElementById('compBarsDiv');
   const total=tasks.length,done=tasks.filter(t=>['completed','accepted'].includes(t.status)).length,rej=tasks.filter(t=>t.status==='rejected').length,rev=tasks.filter(t=>t.status==='review').length;
   if(cbd){
@@ -3571,13 +3572,29 @@ function renderAdminKpiDashboard(){
   const rev=list.filter(t=>t.status==='review'&&(t.submitCount||0)>0).length;
   const pending=list.filter(t=>t.status==='review'&&(t.submitCount||0)===0).length;
   const support=list.filter(t=>t.needSupport).length;
+  const todayAkd=new Date(); todayAkd.setHours(23,59,59,0);
   const pct=total?Math.round(done/total*100):0;
-  const score=Math.max(0,pct-Math.floor(rej/Math.max(total,1)*20));
+  // حساب نسبة الحالي (المهام المنتهي موعدها فقط)
+  const expiredKpi=list.filter(t=>{
+    if(['completed','accepted'].includes(t.status)) return true;
+    if(!t.end) return false;
+    return new Date(t.end)<=todayAkd;
+  });
+  const doneExp=expiredKpi.filter(t=>['completed','accepted'].includes(t.status)).length;
+  const pctCur=expiredKpi.length?Math.round(doneExp/expiredKpi.length*100):100;
+  const pendingCnt=list.filter(t=>{
+    if(['completed','accepted','rejected'].includes(t.status)) return false;
+    if(!t.end) return true;
+    return new Date(t.end)>todayAkd;
+  }).length;
+  const score=Math.max(0,pctCur-Math.floor(rej/Math.max(expiredKpi.length||1,1)*20));
 
   // بطاقات
   document.getElementById('akdStatCards').innerHTML=
     '<div class="sc"><div class="sc-ico ic-p"><i class="fas fa-bullseye"></i></div><div><div class="sc-val">'+total+'</div><div class="sc-lbl">إجمالي المؤشرات</div></div></div>'+
     '<div class="sc"><div class="sc-ico ic-g"><i class="fas fa-check-circle"></i></div><div><div class="sc-val" style="color:#16a34a">'+done+'</div><div class="sc-lbl">مقبولة/مكتملة</div></div></div>'+
+    '<div class="sc"><div class="sc-ico" style="background:#eff6ff"><i class="fas fa-percentage" style="color:#2563eb"></i></div><div><div class="sc-val" style="color:#2563eb">'+pctCur+'%</div><div class="sc-lbl">إنجاز الحالي</div></div></div>'+
+    '<div class="sc"><div class="sc-ico" style="background:#fff7ed"><i class="fas fa-hourglass-half" style="color:#d97706"></i></div><div><div class="sc-val" style="color:#d97706">'+pendingCnt+'</div><div class="sc-lbl">متبقية للموعد</div></div></div>'+
     '<div class="sc"><div class="sc-ico ic-b"><i class="fas fa-paper-plane"></i></div><div><div class="sc-val" style="color:#3b82f6">'+rev+'</div><div class="sc-lbl">قيد المراجعة</div></div></div>'+
     '<div class="sc"><div class="sc-ico ic-r"><i class="fas fa-times-circle"></i></div><div><div class="sc-val" style="color:#ef4444">'+rej+'</div><div class="sc-lbl">مرفوضة</div></div></div>'+
     '<div class="sc" style="border-right:3px solid #f59e0b"><div class="sc-ico ic-y"><i class="fas fa-hourglass-half"></i></div><div><div class="sc-val" style="color:#f59e0b">'+pending+'</div><div class="sc-lbl">لم تُسلَّم</div></div></div>'+
@@ -3597,19 +3614,57 @@ function renderAdminKpiDashboard(){
   if(hCtx){if(akdCharts.health)akdCharts.health.destroy();
     akdCharts.health=new Chart(hCtx,{type:'doughnut',data:{datasets:[{data:[score,100-score],backgroundColor:[score>=70?'#1db954':score>=40?'#f59e0b':'#ef4444','rgba(255,255,255,.12)'],borderWidth:0}]},options:{cutout:'75%',plugins:{legend:{display:false},tooltip:{enabled:false}},responsive:false}});}
 
-  // مقارنة الإدارات
-  const depts=[...new Set(list.map(t=>t.dept).filter(Boolean))];
-  const deptLabels=depts.map(d=>d.replace('إدارة ','').replace('فريق ','').substring(0,10));
-  const deptDone=depts.map(d=>list.filter(t=>t.dept===d&&['completed','accepted'].includes(t.status)).length);
-  const deptPending=depts.map(d=>list.filter(t=>t.dept===d&&t.status==='review'&&(t.submitCount||0)===0).length);
-  const deptRej=depts.map(d=>list.filter(t=>t.dept===d&&t.status==='rejected').length);
-  const dCtx=document.getElementById('akdDeptChart');
-  if(dCtx){if(akdCharts.dept)akdCharts.dept.destroy();
-    akdCharts.dept=new Chart(dCtx,{type:'bar',data:{labels:deptLabels,datasets:[
-      {label:'مقبولة',data:deptDone,backgroundColor:'rgba(34,197,94,.85)',borderRadius:4},
-      {label:'لم تُسلَّم',data:deptPending,backgroundColor:'rgba(245,158,11,.85)',borderRadius:4},
-      {label:'مرفوضة',data:deptRej,backgroundColor:'rgba(239,68,68,.85)',borderRadius:4}
-    ]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Tajawal'},boxWidth:12}}},scales:{x:{grid:{color:'#f1f5f9'},ticks:{font:{family:'Tajawal'}}},y:{grid:{display:false},ticks:{font:{family:'Tajawal',size:11}}}}}});}
+  // مقارنة الإدارات — HTML bars مع مؤشرين
+  const todayKpi=new Date(); todayKpi.setHours(23,59,59,0);
+  const depts=DEPTS.map(d=>d.name).filter(d=>list.some(t=>t.dept===d));
+  const akdBarsEl=document.getElementById('akdDeptBars');
+  if(akdBarsEl){
+    akdBarsEl.innerHTML=depts.map(d=>{
+      const dt=list.filter(t=>t.dept===d);
+      const tot=dt.length||1;
+      const doneAll=dt.filter(t=>['completed','accepted'].includes(t.status)).length;
+      const pctAll=Math.round(doneAll/tot*100);
+      const expired=dt.filter(t=>{
+        if(['completed','accepted'].includes(t.status)) return true;
+        if(!t.end) return false;
+        return new Date(t.end)<=todayKpi;
+      });
+      const doneExp=expired.filter(t=>['completed','accepted'].includes(t.status)).length;
+      const pctCur=expired.length?Math.round(doneExp/expired.length*100):100;
+      const pending=dt.filter(t=>{
+        if(['completed','accepted','rejected'].includes(t.status)) return false;
+        if(!t.end) return true;
+        return new Date(t.end)>todayKpi;
+      }).length;
+      const rej=dt.filter(t=>t.status==='rejected').length;
+      const nm=d.replace('إدارة ','').replace('فريق ','');
+      const cCur=pctCur>=70?'#22c55e':pctCur>=40?'#f59e0b':'#ef4444';
+      const cAll=pctAll>=70?'#22c55e':pctAll>=40?'#f59e0b':'#ef4444';
+      return '<div style="margin-bottom:12px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+          '<span style="font-size:11.5px;font-weight:600;color:var(--txt)">'+nm+'</span>'+
+          '<div style="display:flex;gap:4px">'+
+            (pending?'<span style="background:#eff6ff;color:#2563eb;font-size:9px;padding:1px 5px;border-radius:8px">⏳'+pending+'</span>':'')+
+            (rej?'<span style="background:#fef2f2;color:#dc2626;font-size:9px;padding:1px 5px;border-radius:8px">✗'+rej+'</span>':'')+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">'+
+          '<span style="font-size:9px;color:var(--muted);width:50px;flex-shrink:0">الحالي</span>'+
+          '<div style="flex:1;height:9px;background:#f1f5f9;border-radius:8px;overflow:hidden">'+
+            '<div style="width:'+pctCur+'%;height:100%;background:'+cCur+';border-radius:8px;transition:width .5s"></div>'+
+          '</div>'+
+          '<span style="font-size:10px;font-weight:700;color:'+cCur+';width:28px;text-align:left">'+pctCur+'%</span>'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:5px">'+
+          '<span style="font-size:9px;color:var(--muted);width:50px;flex-shrink:0">الإجمالي</span>'+
+          '<div style="flex:1;height:6px;background:#f1f5f9;border-radius:8px;overflow:hidden">'+
+            '<div style="width:'+pctAll+'%;height:100%;background:'+cAll+'66;border-radius:8px;transition:width .5s"></div>'+
+          '</div>'+
+          '<span style="font-size:10px;color:var(--muted);width:28px;text-align:left">'+pctAll+'%</span>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
 
   // توزيع المعايير
   const c1=list.filter(t=>t.criteria==='جودة الخدمات').length;
