@@ -1105,8 +1105,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
     </div>
     <div class="ig"><label>الإدارة</label><select id="fDept"></select></div>
     <div class="ig-row">
-      <div class="ig"><label>تاريخ البدء</label><input type="date" id="fStart"></div>
-      <div class="ig"><label>تاريخ الانتهاء</label><input type="date" id="fEnd"></div>
+      <div class="ig"><label>تاريخ البدء</label><input type="date" id="fStart" oninput="updateHijriDisplay('fStart','fStartH')"><div id="fStartH" style="font-size:10.5px;color:#2563eb;margin-top:3px;font-weight:600"></div></div>
+      <div class="ig"><label>تاريخ الانتهاء</label><input type="date" id="fEnd" oninput="updateHijriDisplay('fEnd','fEndH')"><div id="fEndH" style="font-size:10.5px;color:#2563eb;margin-top:3px;font-weight:600"></div></div>
     </div>
     <!-- جدولة المهمة -->
     <div style="background:#f8fafc;border-radius:var(--rs);padding:13px;margin-bottom:12px;border:1px solid var(--border)">
@@ -1236,7 +1236,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
       <div class="ig"><label>الأولوية</label><select id="fKpiPriority"><option value="urgent">🔴 مستعجلة</option><option value="normal" selected>🟢 عادية</option><option value="low">🔵 غير مستعجلة</option></select></div>
     </div>
     <div class="ig"><label>عدد المحاولات المسموحة</label><input type="number" id="fKpiMaxSubmits" min="1" max="10" value="2" style="width:100px"></div>
-    <div class="ig"><label>تاريخ انتهاء التسليم</label><input type="date" id="fKpiEnd"></div>
+    <div class="ig"><label>تاريخ انتهاء التسليم</label><input type="date" id="fKpiEnd" oninput="updateHijriDisplay('fKpiEnd','fKpiEndH')"><div id="fKpiEndH" style="font-size:10.5px;color:#2563eb;margin-top:3px;font-weight:600"></div></div>
     <div class="ig">
       <label>مرفقات (يمكن إضافة أكثر من ملف)</label>
       <div id="kpiEditFilesList" style="margin-bottom:6px"></div>
@@ -1834,7 +1834,7 @@ function taskCard(t,showDept,isUser){
     (showDept?'<div style="font-size:12px;color:var(--muted)"><i class="fas fa-building" style="margin-left:4px;font-size:10px"></i>'+t.dept+'</div>':'')+
     (t.desc?'<div style="font-size:12.5px;color:#e11d48;font-weight:500;line-height:1.5">'+t.desc+'</div>':'')+
     (t.required?'<div style="font-size:12px;color:var(--muted)"><b>المطلوب:</b> '+t.required+'</div>':'')+
-    ((t.start||t.end)?'<div style="font-size:11px;color:#94a3b8;line-height:1.9">'+(t.start?'البدء: '+fmtDate(t.start)+'<br>':'')+(t.end?'الانتهاء: '+fmtDate(t.end):'')+'</div>':'')+
+    ((t.start||t.end)?'<div style="font-size:11px;color:#94a3b8;line-height:1.9">'+(t.start?'البدء: '+(toHijri(t.start)||(toHijri(t.start)||fmtDate(t.start)))+'<br>':'')+(t.end?'الانتهاء: '+(toHijri(t.end)||(toHijri(t.end)||fmtDate(t.end))):'')+'</div>':'')+
     (t.end?(function(){
       var days=daysUntil(t.end);
       if(days===null)return '';
@@ -1912,6 +1912,7 @@ function openTaskModal(id){
   fillSelects();
   var _fi=document.getElementById('fFile');if(_fi)_fi.value='';
   showModal('taskModal');
+  setTimeout(prefillHijriDisplays,50);
 }
 function editTask(id){openTaskModal(id);}
 
@@ -2152,8 +2153,8 @@ function viewTask(id){
     '<div><div class="view-label">الإدارة</div><div class="view-val">'+t.dept+'</div></div>'+
     '<div><div class="view-label">الأولوية</div><div style="margin-top:2px"><span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#f1f5f9;color:#334155">'+PM[t.priority]+'</span></div></div>'+
     '<div><div class="view-label">الحالة</div><div style="margin-top:2px"><span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#f0fdf4;color:#16a34a">'+SM[t.status]+'</span></div></div>'+
-    '<div><div class="view-label">تاريخ البدء</div><div class="view-val">'+(t.start?fmtDate(t.start):'—')+'</div></div>'+
-    '<div><div class="view-label">تاريخ الانتهاء</div><div class="view-val">'+(t.end?fmtDate(t.end):'—')+'</div></div>'+
+    '<div><div class="view-label">تاريخ البدء</div><div class="view-val">'+(t.start?(toHijri(t.start)||fmtDate(t.start)):'—')+'</div></div>'+
+    '<div><div class="view-label">تاريخ الانتهاء</div><div class="view-val">'+(t.end?(toHijri(t.end)||fmtDate(t.end)):'—')+'</div></div>'+
     (t.submitTime?'<div style="grid-column:1/-1"><div class="view-label">⏱ وقت التسليم</div><div class="view-val" style="color:#16a34a;font-weight:700">'+t.submitTime+' <span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:2px 7px;border-radius:20px">('+t.submitCount+'/2)</span></div></div>':'')+
     (t.approveTime?'<div style="grid-column:1/-1"><div class="view-label">✅ وقت القبول</div><div class="view-val" style="color:#16a34a;font-weight:700">'+t.approveTime+'</div></div>':'')+
     (t.rejectTime?'<div style="grid-column:1/-1"><div class="view-label">❌ وقت الرفض</div><div class="view-val" style="color:#dc2626;font-weight:700">'+t.rejectTime+'</div></div>':'')+
@@ -3530,6 +3531,7 @@ function downloadKpiReport(){
       +'</div></td></tr>';
   }
   function kRow(t,i){
+    var sh=t.startDate?getH(t.startDate):'—';
     var eh=t.endDate?getH(t.endDate):'—';
     var cr=t.criteria==='جودة الخدمات'?'⭐ جودة':t.criteria==='الامتثال والالتزام'?'📋 امتثال':'—';
     var dn=(t.dept||'').replace('إدارة ','').replace('فريق ','').substring(0,18);
@@ -3537,6 +3539,7 @@ function downloadKpiReport(){
       +'<td style="text-align:right;font-size:11px">'+(t.title||'').substring(0,45)+'</td>'
       +'<td style="text-align:right;font-size:10px">'+dn+'</td>'
       +'<td style="font-size:10px">'+cr+'</td>'
+      +'<td style="font-size:10px">'+sh+'</td>'
       +'<td style="font-size:10px">'+eh+'</td>'
       +'<td>'+badge(t.status)+'</td></tr>';
   }
@@ -4185,6 +4188,20 @@ function daysUntil(dateStr){
   const now=new Date();
   now.setHours(0,0,0,0);d.setHours(0,0,0,0);
   return Math.ceil((d-now)/(1000*60*60*24));
+}
+
+function updateHijriDisplay(inputId,displayId){
+  const v=document.getElementById(inputId)?.value;
+  const el=document.getElementById(displayId);
+  if(!el)return;
+  const h=v?toHijri(v):'';
+  el.textContent=h?'📅 '+h:'';
+}
+function prefillHijriDisplays(){
+  [['fStart','fStartH'],['fEnd','fEndH'],['fKpiEnd','fKpiEndH']].forEach(([i,d])=>{
+    const el=document.getElementById(i);
+    if(el&&el.value) updateHijriDisplay(i,d);
+  });
 }
 
 function toHijri(dateStr){
