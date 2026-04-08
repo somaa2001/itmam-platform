@@ -1815,7 +1815,10 @@ function taskCard(t,showDept,isUser){
   const userCanSeeStatus = isAdmin || (t.submitCount>0) || t.approveTime || t.rejectTime;
   // للمستخدم العادي: عرض زر تسليم مباشر على الكارت
   const remainSubmits = 2-(t.submitCount||0);
-  return '<div class="task-card '+prioCls+'" id="card-'+t.id+'">' +
+  const taskAcceptBadge=['completed','accepted'].includes(t.status)?'<div style="position:absolute;top:0;right:0;background:#16a34a;color:#fff;font-size:11px;font-weight:800;padding:4px 12px;border-radius:0 var(--r) 0 10px;display:flex;align-items:center;gap:4px"><i class="fas fa-check-double"></i> تم القبول والتسليم</div>':'';
+  const taskAcceptBorder=['completed','accepted'].includes(t.status)?'border:2.5px solid #16a34a!important;background:linear-gradient(135deg,#f0fdf4,#fff)!important;':'';
+  return '<div class="task-card '+prioCls+'" id="card-'+t.id+'" style="'+taskAcceptBorder+'">' +
+    taskAcceptBadge+
     '<div class="card-new-dot'+(t.isNew?' show':'')+'" id="newdot-'+t.id+'"></div>' +
     (t.needSupport?'<div style="position:absolute;top:8px;left:'+(t.isNew?'22':'8')+'px;background:#fef3c7;color:#d97706;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;display:inline-flex;align-items:center;gap:3px"><i class="fas fa-hands-helping"></i> يحتاج دعم</div>':'')+
     '<div class="card-prio-tag">'+prioLabel+'</div>' +
@@ -1831,6 +1834,7 @@ function taskCard(t,showDept,isUser){
     (t.end?(function(){
       var days=daysUntil(t.end);
       if(days===null)return '';
+      if(['completed','accepted'].includes(t.status))return '';
       if(days<0) return '<div style="display:inline-flex;align-items:center;gap:5px;margin-top:3px;background:#fef2f2;color:#dc2626;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700"><i class="fas fa-clock"></i>تجاوز الموعد بـ '+Math.abs(days)+' يوم</div>';
       if(days===0) return '<div style="display:inline-flex;align-items:center;gap:5px;margin-top:3px;background:#fef9c3;color:#ca8a04;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700"><i class="fas fa-exclamation-circle"></i>ينتهي اليوم!</div>';
       if(days<=3) return '<div style="display:inline-flex;align-items:center;gap:5px;margin-top:3px;background:#fef9c3;color:#ca8a04;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700"><i class="fas fa-clock"></i>متبقي '+days+' يوم</div>';
@@ -2655,10 +2659,11 @@ function renderKpiTasks(){
     const isLocked=!isAdmin&&!chkSubmit.can;
     const days=daysUntil(t.endDate);
     const cardCls=t.status==='accepted'?'prio-normal':isLocked?'prio-closed':({urgent:'prio-urgent',normal:'prio-normal',low:'prio-low',closed:'prio-closed'}[t.priority]||'prio-normal');
-    const acceptedStyle=t.status==='accepted'?'border:2px solid #22c55e;':
+    const acceptedStyle=t.status==='accepted'?'border:2.5px solid #16a34a;background:linear-gradient(135deg,#f0fdf4 0%,#fff 100%);':
       t.status==='rejected'?'border:2px solid #ef4444;':'';
+    const acceptedBadge=t.status==='accepted'?'<div style="position:absolute;top:0;right:0;background:#16a34a;color:#fff;font-size:11px;font-weight:800;padding:4px 12px;border-radius:0 var(--r) 0 10px;display:flex;align-items:center;gap:4px"><i class="fas fa-check-double"></i> تم القبول والتسليم</div>':''
     const rem=(t.maxSubmits||2)-(t.submitCount||0);
-    return '<div class="task-card '+cardCls+'" id="kcard-'+t.id+'" style="'+acceptedStyle+(isLocked?'opacity:.8;':'')+'">'+
+    return '<div class="task-card '+cardCls+'" id="kcard-'+t.id+'" style="'+acceptedStyle+(isLocked?'opacity:.8;':'')+'">'+acceptedBadge+
     '<div class="card-prio-tag">'+(pl[t.priority]||'عادية')+'</div>'+
     (isLocked&&!isAdmin?'<div style="position:absolute;top:8px;left:8px;background:#f1f5f9;color:#64748b;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;z-index:1"><i class="fas fa-lock" style="margin-left:3px"></i>'+(days!==null&&days>20?'يفتح بعد '+(days-20)+' يوم':'قريباً')+'</div>':'')+
     '<div style="font-size:15px;font-weight:800;margin-top:20px">'+t.title+'</div>'+
@@ -2679,7 +2684,7 @@ function renderKpiTasks(){
           const daysToOpen=days-20;
           html+='<div style="font-size:10.5px;background:#f1f5f9;color:#64748b;padding:4px 8px;border-radius:6px"><i class="fas fa-lock" style="margin-left:4px"></i>تفتح بعد <b>'+daysToOpen+'</b> يوم</div>';
           html+='<div style="font-size:10.5px;color:var(--muted)"><i class="fas fa-flag-checkered" style="margin-left:4px"></i>الانتهاء: '+endDisplay+'</div>';
-        } else if(days!==null&&days<0){
+        } else if(days!==null&&days<0&&!['completed','accepted'].includes(t.status)){
           html+='<div style="font-size:10.5px;background:#fef2f2;color:#dc2626;padding:4px 8px;border-radius:6px;font-weight:700"><i class="fas fa-exclamation-circle" style="margin-left:4px"></i>انتهت منذ <b>'+Math.abs(days)+'</b> يوم</div>';
           html+='<div style="font-size:10.5px;color:#dc2626"><i class="fas fa-flag-checkered" style="margin-left:4px"></i>كان الموعد: '+endDisplay+'</div>';
         } else if(days!==null&&days===0){
@@ -3717,35 +3722,23 @@ function renderAdminKpiDashboard(){
   if(cCtx){if(akdCharts.criteria)akdCharts.criteria.destroy();
     akdCharts.criteria=new Chart(cCtx,{type:'doughnut',data:{datasets:[{data:[c1,c2,c3],backgroundColor:['#7c3aed','#16a34a','#94a3b8'],borderWidth:0}]},options:{cutout:'55%',plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:false}});}
 
-  // تفصيل الإدارات بالأشرطة
-  const barsEl=document.getElementById('akdDeptBars');
-  if(!depts.length){barsEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">لا توجد بيانات</div>';}
-  else{
-    barsEl.innerHTML=depts.map(d=>{
-      const dt=list.filter(t=>t.dept===d);
-      const dd=dt.filter(t=>['completed','accepted'].includes(t.status)).length;
-      const dr=dt.filter(t=>t.status==='rejected').length;
-      const dp=dt.filter(t=>t.status==='review'&&(t.submitCount||0)===0).length;
-      const dpct=dt.length?Math.round(dd/dt.length*100):0;
-      const bc=dpct>=70?'green':dpct>=40?'yellow':'red';
-      const dn=d.replace('إدارة ','').replace('فريق ','').substring(0,18);
-      return '<div class="ach-item" style="margin-bottom:14px">'+
-        '<div class="ach-hdr">'+
-          '<span class="ach-name" style="font-size:12.5px">'+dn+'</span>'+
-          '<span class="ach-meta">'+
-            '<span style="color:#16a34a;margin-left:8px">✓'+dd+'</span>'+
-            '<span style="color:#f59e0b;margin-left:8px">⏳'+dp+'</span>'+
-            '<span style="color:#ef4444;margin-left:8px">✗'+dr+'</span>'+
-            '<span style="color:var(--muted)"> / '+dt.length+'</span>'+
-          '</span>'+
-        '</div>'+
-        '<div class="ach-bar-wrap"><div class="ach-bar '+bc+'" style="width:'+dpct+'%">'+dpct+'%</div></div>'+
-      '</div>';
-    }).join('');
-  }
+  // تفصيل الإدارات - يتم التحديث من akdBarsEl أعلاه
+  // (تم دمجه مع كود أعلاه)
 
   // آخر التسليمات
-  const submitted=list.filter(t=>(t.submitCount||0)>0).sort((a,b)=>(b.submitTime||'').localeCompare(a.submitTime||'')).slice(0,6);
+  const todayAkd2=new Date(); todayAkd2.setHours(23,59,59,0);
+  // المهام المسلمة غير المقبولة + المهام القريبة من موعدها (7 أيام)
+  const submitted=list.filter(t=>{
+    if(['accepted','completed'].includes(t.status)) return false; // المقبولة تختفي
+    if((t.submitCount||0)>0) return true; // المسلمة للمراجعة
+    // المهام التي تقترب من موعدها
+    const d=daysUntil(t.endDate);
+    return d!==null && d>=0 && d<=7;
+  }).sort((a,b)=>{
+    const da=daysUntil(a.endDate), db=daysUntil(b.endDate);
+    if(da===null) return 1; if(db===null) return -1;
+    return da-db;
+  }).slice(0,8);
   const recEl=document.getElementById('akdRecentSubmits');
   const ss={review:'background:#fef9c3;color:#ca8a04',accepted:'background:#dcfce7;color:#16a34a',completed:'background:#d1fae5;color:#065f46',rejected:'background:#fee2e2;color:#dc2626'};
   recEl.innerHTML=!submitted.length?'<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">لا توجد تسليمات بعد</div>':
@@ -3767,7 +3760,7 @@ function renderAdminKpiDashboard(){
     ).join('');
 
   // تحتاج انتباهاً
-  const urgent=list.filter(t=>t.status==='rejected'||t.needSupport||(t.priority==='urgent'&&(t.submitCount||0)===0));
+  const urgent=list.filter(t=>!['accepted','completed'].includes(t.status)&&(t.status==='rejected'||t.needSupport||(t.priority==='urgent'&&(t.submitCount||0)===0)));
   const urgEl=document.getElementById('akdUrgent');
   urgEl.innerHTML=!urgent.length?
     '<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px"><i class="fas fa-check-circle" style="color:#16a34a;font-size:28px;display:block;margin-bottom:8px"></i>لا توجد مهام تحتاج انتباهاً</div>':
