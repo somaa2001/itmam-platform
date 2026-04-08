@@ -707,6 +707,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
           <div id="compBarsDiv" style="max-height:260px;overflow-y:auto;padding:4px 0"></div>
         </div>
         <div class="dcard" style="margin-bottom:20px">
+          <div class="dcard-title"><i class="fas fa-exclamation-triangle" style="color:#ef4444"></i> الإدارات الأسوأ أداءً — مهام انتهت ولم تُسلَّم</div>
+          <div id="worstDepts" style="max-height:280px;overflow-y:auto;padding:4px 0"></div>
+        </div>
+        <div class="dcard" style="margin-bottom:20px">
           <div class="dcard-title"><i class="fas fa-tasks"></i> نسب الإنجاز التفصيلية</div>
           <div id="achBars"></div>
         </div>
@@ -3250,6 +3254,55 @@ function updateStats(){
   const ka=document.getElementById('kpi-active');if(ka)ka.textContent=users.length;
 }
 
+function renderWorstDepts(){
+  const el=document.getElementById('worstDepts');if(!el)return;
+  const today=new Date();today.setHours(23,59,59,0);
+  // المهام المنتهية ولم تُسلَّم (submitCount=0 والموعد انتهى)
+  const deptStats={};
+  DEPTS.forEach(d=>{deptStats[d.name]={expired:0,notSubmitted:0,total:0};});
+  tasks.forEach(t=>{
+    if(!t.dept||!deptStats[t.dept]) return;
+    deptStats[t.dept].total++;
+    if(!t.end) return;
+    const end=new Date(t.end);
+    if(end>today) return; // لم ينتهِ وقتها
+    if(['completed','accepted'].includes(t.status)) return; // منجزة
+    deptStats[t.dept].expired++;
+    if((t.submitCount||0)===0) deptStats[t.dept].notSubmitted++;
+  });
+  // ترتيب حسب الأسوأ (الأكثر مهام منتهية غير مسلمة)
+  const ranked=Object.entries(deptStats)
+    .filter(([d,s])=>s.notSubmitted>0)
+    .sort((a,b)=>b[1].notSubmitted-a[1].notSubmitted);
+  if(!ranked.length){
+    el.innerHTML='<div style="text-align:center;padding:24px;color:#16a34a;font-size:13px"><i class="fas fa-check-circle" style="font-size:28px;display:block;margin-bottom:8px"></i>جميع الإدارات ملتزمة بالمواعيد</div>';
+    return;
+  }
+  const max=ranked[0][1].notSubmitted||1;
+  el.innerHTML=ranked.map(([dept,s],i)=>{
+    const pct=Math.round(s.notSubmitted/Math.max(s.total,1)*100);
+    const shortName=dept.replace('إدارة ','').replace('فريق ','');
+    const rank=i===0?'🔴':i===1?'🟠':i===2?'🟡':'🔵';
+    const barW=Math.round(s.notSubmitted/max*100);
+    return '<div style="margin-bottom:12px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+        '<div style="display:flex;align-items:center;gap:6px">'+
+          '<span style="font-size:14px">'+rank+'</span>'+
+          '<span style="font-size:12.5px;font-weight:600;color:var(--txt)">'+shortName+'</span>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center">'+
+          '<span style="font-size:10px;background:#fef2f2;color:#dc2626;padding:2px 7px;border-radius:10px;font-weight:700">'+s.notSubmitted+' لم تُسلَّم</span>'+
+          '<span style="font-size:10px;color:var(--muted)">'+s.expired+' منتهية / '+s.total+' إجمالي</span>'+
+        '</div>'+
+      '</div>'+
+      '<div style="height:8px;background:#f1f5f9;border-radius:20px;overflow:hidden">'+
+        '<div style="width:'+barW+'%;height:100%;background:'+(i===0?'#ef4444':i===1?'#f97316':i===2?'#f59e0b':'#3b82f6')+';border-radius:20px;transition:width .5s"></div>'+
+      '</div>'+
+      '<div style="font-size:9.5px;color:#dc2626;margin-top:2px">'+pct+'% من مهام الإدارة انتهت دون تسليم</div>'+
+    '</div>';
+  }).join('');
+}
+
 function updateAchBars(){
   const today=new Date(); today.setHours(23,59,59,0);
   ['achBars','kpiAchBars'].forEach(cid=>{
@@ -3357,7 +3410,7 @@ function renderDashCharts(){
   const kc=document.getElementById('kpiCompChart');
   if(kc){if(chartInstances['kpiComp'])chartInstances['kpiComp'].destroy();
     chartInstances['kpiComp']=new Chart(kc,{type:'bar',data:{labels:sn,datasets:[{label:'منجزة',data:doneD,backgroundColor:'rgba(34,197,94,.8)',borderRadius:4},{label:'مرفوضة',data:rejD,backgroundColor:'rgba(239,68,68,.8)',borderRadius:4},{label:'مستعجلة',data:urgD,backgroundColor:'rgba(245,158,11,.8)',borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Tajawal'},boxWidth:12}}},scales:{x:{grid:{color:'#f1f5f9'},ticks:{font:{family:'Tajawal'}}},y:{grid:{display:false},ticks:{font:{family:'Tajawal',size:12}}}}}});}
-  updateAchBars();updateAnnStats();updateStats();
+  renderWorstDepts();updateAchBars();updateAnnStats();updateStats();
 }
 
 // ══════════════════════════════════════════════
@@ -3538,7 +3591,43 @@ function downloadKpiReport(){
       +'<div class="ci">'+circ(jPct,'#7c3aed',100)+'<div class="cl">جودة الخدمات</div><div class="cs">'+jD+' من '+jT.length+'</div></div>'
       +'<div class="ci">'+circ(iPct,'#16a34a',100)+'<div class="cl">الامتثال والالتزام</div><div class="cs">'+iD+' من '+iT.length+'</div></div>'
     +'</div>'
-    +'<div class="sec">📋 المهام العادية</div>'
+    +'<div class="sec">🚨 الإدارات الأسوأ أداءً — مهام انتهت ولم تُسلَّم</div>'    +(function(){
+      var todayRpt=new Date();todayRpt.setHours(23,59,59,0);
+      var dStats={};
+      DEPTS.forEach(function(d){dStats[d.name]={expired:0,notSub:0,total:0};});
+      tasks.forEach(function(t){
+        if(!t.dept||!dStats[t.dept])return;
+        dStats[t.dept].total++;
+        if(!t.end)return;
+        if(new Date(t.end)>todayRpt)return;
+        if(['completed','accepted'].includes(t.status))return;
+        dStats[t.dept].expired++;
+        if(!(t.submitCount||0))dStats[t.dept].notSub++;
+      });
+      var ranked=Object.entries(dStats).filter(function(e){return e[1].notSub>0;})
+        .sort(function(a,b){return b[1].notSub-a[1].notSub;});
+      if(!ranked.length) return '<div style="background:#f0fdf4;border-radius:10px;padding:16px;text-align:center;color:#16a34a;font-size:13px;margin-bottom:16px">✅ جميع الإدارات ملتزمة بالمواعيد</div>';
+      var rows=ranked.map(function(e,i){
+        var d=e[0],s=e[1];
+        var pct=s.total?Math.round(s.notSub/s.total*100):0;
+        var rank=i===0?'🔴':i===1?'🟠':i===2?'🟡':'🔵';
+        var bc=i===0?'#ef4444':i===1?'#f97316':i===2?'#f59e0b':'#3b82f6';
+        return '<tr><td style="text-align:right;font-weight:700">'+rank+' '+d+'</td>'
+          +'<td>'+s.total+'</td><td style="color:#dc2626;font-weight:700">'+s.notSub+'</td>'
+          +'<td>'+s.expired+'</td>'
+          +'<td><div style="display:flex;align-items:center;gap:6px">'
+            +'<div style="flex:1;background:#f1f5f9;border-radius:50px;height:7px;overflow:hidden">'
+              +'<div style="background:'+bc+';height:100%;width:'+pct+'%;border-radius:50px"></div>'
+            +'</div>'
+            +'<span style="font-size:11px;font-weight:700;color:'+bc+'">'+pct+'%</span>'
+          +'</div></td></tr>';
+      }).join('');
+      return '<table><thead><tr>'
+        +'<th style="text-align:right">الإدارة</th>'
+        +'<th>الإجمالي</th><th style="color:#fca5a5">لم تُسلَّم</th>'
+        +'<th>مواعيد منتهية</th><th style="width:160px">نسبة الإخفاق</th>'
+        +'</tr></thead><tbody>'+rows+'</tbody></table>';
+    }())    +'<div class="sec">📋 المهام العادية</div>'
     +'<div class="cards">'
       +'<div class="card" style="border-top:4px solid #2563eb"><div style="font-size:24px;font-weight:900;color:#2563eb;margin-bottom:4px">'+aT+'</div><div style="font-size:10px;color:#64748b;font-weight:700">الإجمالي</div></div>'
       +'<div class="card" style="border-top:4px solid #22c55e"><div style="font-size:24px;font-weight:900;color:#16a34a;margin-bottom:4px">'+aD+'</div><div style="font-size:10px;color:#64748b;font-weight:700">مكتملة</div></div>'
@@ -3728,7 +3817,7 @@ function renderAdminKpiDashboard(){
   // آخر التسليمات
   const todayAkd2=new Date(); todayAkd2.setHours(23,59,59,0);
   // المهام المسلمة غير المقبولة + المهام القريبة من موعدها (7 أيام)
-  const submitted=list.filter(t=>{
+  const submitted=kpiTasks.filter(t=>{
     if(['accepted','completed'].includes(t.status)) return false; // المقبولة تختفي
     if((t.submitCount||0)>0) return true; // المسلمة للمراجعة
     // المهام التي تقترب من موعدها
@@ -3740,6 +3829,7 @@ function renderAdminKpiDashboard(){
     return da-db;
   }).slice(0,8);
   const recEl=document.getElementById('akdRecentSubmits');
+  if(!recEl){console.warn('akdRecentSubmits not found');return;}
   const ss={review:'background:#fef9c3;color:#ca8a04',accepted:'background:#dcfce7;color:#16a34a',completed:'background:#d1fae5;color:#065f46',rejected:'background:#fee2e2;color:#dc2626'};
   recEl.innerHTML=!submitted.length?'<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">لا توجد تسليمات بعد</div>':
     submitted.map(t=>
@@ -3760,14 +3850,35 @@ function renderAdminKpiDashboard(){
     ).join('');
 
   // تحتاج انتباهاً
-  const urgent=list.filter(t=>!['accepted','completed'].includes(t.status)&&(t.status==='rejected'||t.needSupport||(t.priority==='urgent'&&(t.submitCount||0)===0)));
+  const todayUrgent=new Date(); todayUrgent.setHours(23,59,59,0);
+  const urgent=kpiTasks.filter(t=>{  // استخدام kpiTasks كاملة بدل list المفلترة
+    if(['accepted','completed'].includes(t.status)) return false;
+    if(t.status==='rejected') return true;
+    if(t.needSupport) return true;
+    if(t.priority==='urgent') return true;
+    // تجاوزت الموعد وغير مقبولة
+    const d=daysUntil(t.endDate);
+    if(d!==null && d<0) return true;
+    return false;
+  }).sort((a,b)=>{
+    // المرفوضة أولاً، ثم الأقرب موعداً
+    if(a.status==='rejected' && b.status!=='rejected') return -1;
+    if(b.status==='rejected' && a.status!=='rejected') return 1;
+    const da=daysUntil(a.endDate), db=daysUntil(b.endDate);
+    if(da===null) return 1; if(db===null) return -1;
+    return da-db;
+  });
   const urgEl=document.getElementById('akdUrgent');
+  if(!urgEl){console.warn('akdUrgent not found');return;}
   urgEl.innerHTML=!urgent.length?
     '<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px"><i class="fas fa-check-circle" style="color:#16a34a;font-size:28px;display:block;margin-bottom:8px"></i>لا توجد مهام تحتاج انتباهاً</div>':
-    urgent.slice(0,6).map(t=>{
+    urgent.slice(0,10).map(t=>{
+      const daysT=daysUntil(t.endDate);
+      const isOverdue=daysT!==null&&daysT<0;
       const tag=t.status==='rejected'?{bg:'#fef2f2',col:'#dc2626',icon:'times-circle',lbl:'مرفوضة'}:
+                isOverdue?{bg:'#fef2f2',col:'#b91c1c',icon:'calendar-times',lbl:'تجاوزت الموعد بـ '+Math.abs(daysT)+' يوم'}:
                 t.needSupport?{bg:'#fef3c7',col:'#d97706',icon:'hands-helping',lbl:'تحتاج دعم'}:
-                {bg:'#fff7ed',col:'#ea580c',icon:'exclamation-circle',lbl:'مستعجلة ولم تُسلَّم'};
+                {bg:'#fff7ed',col:'#ea580c',icon:'exclamation-circle',lbl:'مستعجلة — لم تُسلَّم'};
       return '<div style="padding:9px 12px;margin-bottom:6px;background:'+tag.bg+';border-radius:8px;display:flex;align-items:center;gap:8px">'+
         '<i class="fas fa-'+tag.icon+'" style="color:'+tag.col+';font-size:14px;flex-shrink:0"></i>'+
         '<div style="flex:1;min-width:0">'+
