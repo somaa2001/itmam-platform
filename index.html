@@ -3547,7 +3547,13 @@ function downloadKpiReport(){
   var dSRows='',kSRows='',kpiRows='';
   Object.keys(dS).forEach(function(d){dSRows+=dRow(d,dS[d]);});
   Object.keys(kS).forEach(function(d){kSRows+=dRow(d,kS[d]);});
-  kpiTasks.forEach(function(t,i){kpiRows+=kRow(t,i);});
+  var sortedKpi=[...kpiTasks].sort(function(a,b){
+    if(!a.endDate&&!b.endDate)return 0;
+    if(!a.endDate)return 1;
+    if(!b.endDate)return -1;
+    return new Date(a.endDate)-new Date(b.endDate);
+  });
+  sortedKpi.forEach(function(t,i){kpiRows+=kRow(t,i);});
 
   var css='*{margin:0;padding:0;box-sizing:border-box}'
     +'body{font-family:Tajawal,Arial,sans-serif;background:#f4f6fa;color:#1e293b;direction:rtl;font-size:13px}'
