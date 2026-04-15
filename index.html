@@ -1074,6 +1074,39 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
 <!-- TOAST -->
 <div class="toast-wrap" id="toastWrap"></div>
 
+<!-- LATE SCORE MODAL -->
+<div class="modal-ov" id="lateScoreModal">
+  <div class="modal" style="max-width:420px;direction:rtl">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:16px;font-weight:800;color:var(--txt)">⏰ تسليم بعد الموعد</div>
+      <button class="modal-close" onclick="hideModal('lateScoreModal')">×</button>
+    </div>
+    <div id="lateScoreInfo" style="background:#fef9c3;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12.5px;color:#854d0e;line-height:1.7"></div>
+    <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--txt);margin-bottom:8px">دليل تقييم التأخير:</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:11.5px">
+        <div style="background:#dcfce7;color:#15803d;padding:5px 8px;border-radius:6px">في الوقت: <b>100%</b></div>
+        <div style="background:#fef9c3;color:#854d0e;padding:5px 8px;border-radius:6px">تأخير 1 يوم: <b>90%</b></div>
+        <div style="background:#fef3c7;color:#92400e;padding:5px 8px;border-radius:6px">تأخير 2 يوم: <b>80%</b></div>
+        <div style="background:#ffedd5;color:#c2410c;padding:5px 8px;border-radius:6px">تأخير 3 أيام: <b>70%</b></div>
+        <div style="background:#fee2e2;color:#b91c1c;padding:5px 8px;border-radius:6px">تأخير 4 أيام: <b>60%</b></div>
+        <div style="background:#fecaca;color:#991b1b;padding:5px 8px;border-radius:6px">تأخير 5+ يوم: <b>50%</b></div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:700;color:var(--txt);display:block;margin-bottom:6px">نسبة الإنجاز المقررة:</label>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="range" id="lateScoreRange" min="0" max="100" step="5" value="90" oninput="document.getElementById('lateScoreVal').textContent=this.value+'%'" style="flex:1">
+        <span id="lateScoreVal" style="font-size:22px;font-weight:900;color:#0f2744;min-width:50px;text-align:center">90%</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="confirmLateScore()" style="flex:1">✓ تأكيد القبول</button>
+      <button class="btn" onclick="hideModal('lateScoreModal')" style="flex:1">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <!-- TASK MODAL -->
 <div class="modal-ov" id="taskModal">
   <div class="modal-box">
@@ -2024,29 +2057,22 @@ async function deleteTask(id){
 }
 
 async function changeStatus(status){
-  const t=tasks.find(t=>t.id===currentTaskId);
-  const ts=nowStamp();
-  t.status=status;
-  if(status==='accepted') t.approveTime=ts;
-  if(status==='rejected') t.rejectTime=ts;
-  if(status==='incomplete') t.rejectTime=ts;
-  if(status==='review'){t.approveTime=null;t.rejectTime=null;}
-  const msgs={accepted:'✅ تم قبول المهمة | وقت القبول: '+ts, rejected:'❌ تم رفض المهمة | وقت الرفض: '+ts, incomplete:'⚠️ المهمة غير مكتملة — يرجى إعادة التسليم | الوقت: '+ts, review:'↩ تمت إعادة المهمة للمراجعة | الوقت: '+ts};
-  const msg=msgs[status]||'تم تغيير الحالة';
-  t.comments.push({author:currentUser.name,txt:msg,time:ts,type:'decision'});
-  // اذا غير مكتملة أعد عداد التسليم لاتاحة تسليم جديد
-  if(status==='incomplete'){t.submitCount=0;t.submitTime=null;}
-  showLoading();
-  const {error}=await db.from('tasks').update(taskToDb(t)).eq('id',currentTaskId);
-  hideLoading();
-  if(!error){
-    hideModal('viewModal');
-    const nc={accepted:'g',rejected:'r',incomplete:'y'};
-    const nl={accepted:'✅ قبول',rejected:'❌ رفض',incomplete:'⚠️ غير مكتملة'};
-    addNotif('check-circle',nc[status]||'b',(nl[status]||'تحديث')+' "'+t.title+'"',currentTaskId,'task');
-    refresh(); toast('تم: '+SM[status]);
-  } else {toast('خطأ','err');console.error(error);}
+  const t=tasks.find(t=>t.id===currentTaskId);if(!t)return;
+  // عند القبول: تحقق هل التسليم كان بعد الموعد
+  if(status==='accepted'){
+    const today=new Date();today.setHours(0,0,0,0);
+    const end=t.end?new Date(t.end+'T00:00:00'):null;
+    const isLate=end&&today>end;
+    const submitDate=t.submitTime?new Date(t.submitTime.substring(0,10)+'T00:00:00'):null;
+    const submitLate=submitDate&&end&&submitDate>end;
+    if(isLate||submitLate){
+      showLateScoreModal('task',currentTaskId,'accepted',t.end,t.title);
+      return;
+    }
+  }
+  await _doChangeStatus(status,status==='accepted'?100:undefined);
 }
+
 
 async function submitTask(){
   const t=tasks.find(t=>t.id===currentTaskId);
