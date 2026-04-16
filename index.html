@@ -1075,7 +1075,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
 <div class="toast-wrap" id="toastWrap"></div>
 
 <!-- LATE SCORE MODAL -->
-<div class="modal-ov" id="lateScoreModal">
+<div class="modal-ov" id="lateScoreModal" style="z-index:500">
   <div class="modal" style="max-width:420px;direction:rtl">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div style="font-size:16px;font-weight:800;color:var(--txt)">⏰ تسليم بعد الموعد</div>
@@ -2073,6 +2073,11 @@ function calcSuggestedScore(endDate){
 }
 
 function showLateScoreModal(type,id,status,endDate,title){
+  // أغلق أي مودال مفتوح أولاً
+  ['viewModal','taskModal','kpiTaskModal'].forEach(m=>{
+    const el=document.getElementById(m);
+    if(el&&el.classList.contains('show')) el.classList.remove('show');
+  });
   const today=new Date(); today.setHours(0,0,0,0);
   const end=endDate?new Date(endDate+'T00:00:00'):null;
   const days=end?Math.round((today-end)/(1000*60*60*24)):0;
