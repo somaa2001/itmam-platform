@@ -1422,7 +1422,7 @@ const DEPTS=[
   {name:'إدارة العمليات والبلاغات',icon:'fa-clipboard-list'},
   {name:'إدارة خدمة العملاء',icon:'fa-headset'},
   {name:'الإدارة النسائية',icon:'fa-female'},
-  {name:'إدارة تجربة الحاج وفريق السعادة',icon:'fa-star'},
+  {name:'إدارة تجربة الحاج',icon:'fa-star'},
   {name:'بطاقات نسك',icon:'fa-id-card'},
   {name:'فريق متابعة مؤشرات الأداء',icon:'fa-chart-line'},
   {name:'إدارة العلاقات العامة والإعلام',icon:'fa-broadcast-tower'},
@@ -1438,6 +1438,7 @@ const DEPTS=[
   {name:'إدارة الموارد البشرية والشئون الإدارية',icon:'fa-users-cog',cls:'hl2'},
   {name:'إدارة التدريب',icon:'fa-graduation-cap'},
   {name:'فريق الجودة',icon:'fa-award'},
+  {name:'إدارة صناعة التجربة وتعزيز الثقة',icon:'fa-star-half-alt'},
 ];
 
 const SM={review:'قيد المراجعة',accepted:'مقبولة',rejected:'مرفوضة',completed:'مكتملة',incomplete:'غير مكتملة',pending:'مستلمة',closed:'مقفلة'};
@@ -2300,15 +2301,35 @@ function viewTask(id){
 function renderComments(t){
   const area=document.getElementById('cmtArea');
   if(!t.comments||!t.comments.length){area.innerHTML='<div style="font-size:12px;color:var(--muted);padding:6px 0">لا توجد تعليقات</div>';return;}
-  area.innerHTML=t.comments.map(c=>{
+  // فصل التعليقات: القرارات (decision) والتسليمات (submit) والعادية
+  const decisions=t.comments.filter(c=>c.type==='decision');
+  const lastDecision=decisions.length?decisions[decisions.length-1]:null;
+  const others=t.comments.filter(c=>c.type!=='decision');
+  // بناء العرض
+  let html='';
+  // آخر قرار فقط في الأعلى بشكل بارز
+  if(lastDecision){
+    const isAcc=lastDecision.txt.includes('قبول')||lastDecision.txt.includes('accepted');
+    const isRej=lastDecision.txt.includes('رفض')||lastDecision.txt.includes('rejected');
+    const decColor=isAcc?'#dcfce7':isRej?'#fee2e2':'#fef9c3';
+    const decBorder=isAcc?'#16a34a':isRej?'#dc2626':'#d97706';
+    const decIcon=isAcc?'✅':isRej?'❌':'⚠️';
+    html+='<div style="background:'+decColor+';border:1.5px solid '+decBorder+';border-radius:10px;padding:10px 12px;margin-bottom:10px">'+
+      '<div style="font-size:10px;color:'+decBorder+';font-weight:700;margin-bottom:4px">'+decIcon+' آخر قرار</div>'+
+      '<div style="font-size:12.5px;font-weight:700;color:var(--txt)">'+lastDecision.txt+'</div>'+
+      '<div style="font-size:10px;color:var(--muted);margin-top:3px">'+lastDecision.author+' • '+lastDecision.time+'</div>'+
+    '</div>';
+  }
+  // باقي التعليقات والتسليمات (بدون قرارات قديمة)
+  html+=others.map(c=>{
     const isSubmit=c.type==='submit';
-    const isDecision=c.type==='decision';
-    const bg=isSubmit||isDecision?'#f0fdf4':'transparent';
+    const bg=isSubmit?'#eff6ff':'transparent';
     return '<div class="cmt-item" style="background:'+bg+';border-radius:8px;padding:8px;margin-bottom:4px">'+
       '<div class="cmt-av">'+c.author[0]+'</div>'+
       '<div style="flex:1"><div style="font-size:10.5px;color:var(--muted);margin-bottom:3px"><b>'+c.author+'</b> • '+c.time+'</div>'+
-      '<div style="font-size:12.5px;'+(isSubmit||isDecision?'font-weight:600':'')+'">'+c.txt+'</div></div></div>';
+      '<div style="font-size:12.5px;'+(isSubmit?'font-weight:600':'')+'">'+c.txt+'</div></div></div>';
   }).join('');
+  area.innerHTML=html||'<div style="font-size:12px;color:var(--muted);padding:6px 0">لا توجد تعليقات</div>';
 }
 
 function refresh(){
