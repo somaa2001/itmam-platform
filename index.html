@@ -1506,6 +1506,7 @@ function mapComplaint(r){
     type:r.type||'operational', severity:r.severity||'medium', status:r.status||'open',
     location:r.location||'', reporter:r.reporter||'', reporterDept:r.reporter_department||'',
     reportTime:r.created_at?(r.created_at.replace('T',' ').substring(0,16)):'',
+    season:r.season||'1447هـ', incidentDate:r.incident_date||null,
     assignedTo:r.assigned_to||null, file:'', resolvedTime:r.resolved_time||null,
     timeline:Array.isArray(r.timeline)?r.timeline:[]
   };
@@ -2502,6 +2503,7 @@ function renderComplaints(){
     '<div class="c-desc">'+c.desc.substring(0,130)+(c.desc.length>130?'...':'')+'</div>'+
     '<div class="c-progress-wrap"><div class="c-progress-bar" style="width:'+(pPct[c.status]||10)+'%;background:'+(pCol[c.status]||'#94a3b8')+'"></div></div>'+
     (isAdmin?'<button class="cabt del" onclick="event.stopPropagation();deleteComplaint(\''+c.id+'\')" style="position:absolute;top:10px;left:10px;font-size:10px;padding:3px 9px">حذف</button>':'')+
+    (c.season?'<span style="font-size:9.5px;background:#eff6ff;color:#1d4ed8;padding:1px 7px;border-radius:10px;font-weight:700;position:absolute;bottom:10px;left:10px">'+c.season+'</span>':'')+
     '<div class="c-meta">'+
       '<span><i class="fas fa-user" style="margin-left:4px"></i>'+c.reporter+'</span>'+
       '<span><i class="fas fa-building" style="margin-left:4px"></i>'+c.dept+'</span>'+
@@ -2539,11 +2541,13 @@ async function saveComplaint(){
   const loc=document.getElementById('fcLocation').value;
   const timeline=[{author:currentUser.name,role:currentUser.role==='admin'?'مسؤول':currentUser.role==='supervisor'?'مشرف':'مستخدم',action:'رفع البلاغ',note:desc,time:ts,color:'#ef4444',icon:'flag'}];
   showLoading();
+  const season=document.getElementById('fcSeason')?.value||'1447هـ';
+  const incDate=document.getElementById('fcDate')?.value||null;
   const {data,error}=await db.from('complaints').insert({
     id:nid,title,description:desc,department:dept,type,severity:sev,
     status:'open',location:loc,reporter:currentUser.name,
     reporter_department:currentUser.dept,assigned_to:null,
-    resolved_time:null,timeline
+    resolved_time:null,timeline,season,incident_date:incDate
   }).select().single();
   hideLoading();
   if(!error&&data){
@@ -4255,18 +4259,31 @@ function userSubmitFilesHtml(comments){
     if(comments[i].submitFile&&comments[i].submitFile.name) submitCmts.push(comments[i]);
   }
   if(!submitCmts.length) return '';
+  // ترتيب حسب الأحدث
+  submitCmts.sort(function(a,b){return (b.time||'').localeCompare(a.time||'');});
   var links='';
   for(var j=0;j<submitCmts.length;j++){
     var c=submitCmts[j];
-    links+='<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;flex-wrap:wrap">'
-      +renderFileLink(c.submitFile.name,c.submitFile.url)
-      +'<span style="font-size:10px;color:#64748b;background:#f1f5f9;padding:2px 7px;border-radius:20px">'
-      +c.author+' — '+c.time+'</span>'
+    var isLatest=j===0;
+    var border=isLatest?'border:1.5px solid #16a34a;':'border:1px solid #e2e8f0;';
+    var bg=isLatest?'background:#f0fdf4;':'background:#fff;';
+    var latestBadge=isLatest?'<span style="font-size:9px;background:#16a34a;color:#fff;padding:1px 7px;border-radius:10px;font-weight:700;margin-right:4px">الأخير</span>':'';
+    links+='<div style="'+bg+border+'border-radius:8px;padding:8px 10px;margin-bottom:6px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">'
+        +'<div style="display:flex;align-items:center;gap:5px">'
+          +latestBadge
+          +'<span style="font-size:10.5px;font-weight:600;color:var(--txt)">'+c.author+'</span>'
+        +'</div>'
+        +'<span style="font-size:9.5px;color:#64748b">'+c.time+'</span>'
+      +'</div>'
+      +'<div>'+renderFileLink(c.submitFile.name,c.submitFile.url)+'</div>'
       +'</div>';
   }
-  return '<div style="margin-top:10px;background:#f0fdf4;border-radius:8px;padding:10px 12px">'
+  return '<div style="margin-top:10px;background:#f8fafc;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0">'
     +'<div style="font-size:11px;font-weight:800;color:#16a34a;margin-bottom:8px">'
-    +'<i class="fas fa-paper-plane" style="margin-left:4px"></i>مرفقات التسليم ('+submitCmts.length+')</div>'
+    +'<i class="fas fa-paper-plane" style="margin-left:4px"></i>مرفقات التسليم ('+submitCmts.length+')'
+    +(submitCmts.length>1?'<span style="font-size:9.5px;color:#64748b;font-weight:400;margin-right:8px"> — مرتبة حسب الأحدث</span>':'')
+    +'</div>'
     +'<div>'+links+'</div></div>';
 }
 
