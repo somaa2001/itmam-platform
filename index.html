@@ -2645,7 +2645,9 @@ async function updateComplaint(){
   c.timeline.push({author:currentUser.name,role:'مسؤول',action:'تحديث البلاغ',note:parts.join(' | '),time:ts,color:newStatus==='resolved'?'#22c55e':newStatus==='inprogress'?'#f59e0b':'#3b82f6',icon:newStatus==='resolved'?'check-circle':'edit'});
   document.getElementById('vcNote').value='';
   showLoading();
-  await db.from('complaints').update({status:c.status,assigned_to:c.assignedTo,resolved_time:c.resolvedTime,timeline:c.timeline}).eq('id',currentComplaintId);
+  const newSeason=document.getElementById('vcSeason')?.value||c.season||'1447هـ';
+  c.season=newSeason;
+  await db.from('complaints').update({status:c.status,assigned_to:c.assignedTo,resolved_time:c.resolvedTime,timeline:c.timeline,season:c.season}).eq('id',currentComplaintId);
   hideLoading();
   renderComplaintTimeline(c);renderComplaints();
   addNotif('flag',newStatus==='resolved'?'g':'b','تم تحديث البلاغ '+c.id);
