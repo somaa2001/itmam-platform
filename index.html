@@ -992,7 +992,24 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
             <div style="font-size:20px;font-weight:800;color:var(--primary)">نظام البلاغات والمتابعة</div>
             <div style="font-size:12px;color:var(--muted);margin-top:3px">تتبع وإدارة البلاغات عبر الإدارات</div>
           </div>
-          <button class="btn-new" id="btnNewComplaint"><i class="fas fa-plus"></i> رفع بلاغ جديد</button>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:7px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px">
+              <i class="fas fa-calendar-alt" style="color:#2563eb;font-size:13px"></i>
+              <label style="font-size:12px;font-weight:700;color:var(--txt)">الموسم:</label>
+              <select id="complaintSeasonFilter" onchange="renderComplaints()" style="border:none;background:transparent;font-size:12px;font-weight:700;color:#0f2744;font-family:inherit;cursor:pointer">
+                <option value="all">الكل</option>
+                <option value="1443هـ">1443هـ</option>
+                <option value="1444هـ">1444هـ</option>
+                <option value="1445هـ">1445هـ</option>
+                <option value="1446هـ">1446هـ</option>
+                <option value="1447هـ" selected>1447هـ</option>
+                <option value="1448هـ">1448هـ</option>
+                <option value="1449هـ">1449هـ</option>
+                <option value="1450هـ">1450هـ</option>
+              </select>
+            </div>
+            <button class="btn-new" id="btnNewComplaint"><i class="fas fa-plus"></i> رفع بلاغ جديد</button>
+          </div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px" id="complaintStats"></div>
         <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
