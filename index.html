@@ -1421,8 +1421,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--txt);dire
 // ══════════════════════════════════════════════
 // SUPABASE SETUP
 // ══════════════════════════════════════════════
-const SURL = 'https://kecgxszssyqhosfwfigt.supabase.co';
-const SKEY = 'sb_publishable_B5P6EshGCePobDsYvgMh-A_JQUTUwdz';
+const SURL = 'https://xlmsbuztjxoadyxwexnc.supabase.co';
+const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsbXNidXp0anhvYWR5eHdleG5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MDk4MDMsImV4cCI6MjA5MDE4NTgwM30.M8caZ8QiD2xOkKfqAPaEktvitXoGUomlLZxg7DzW3oI';
 const db = window.supabase.createClient(SURL, SKEY);
 
 // ══════════════════════════════════════════════
@@ -1512,7 +1512,7 @@ function taskToDb(t){
   };
 }
 function mapUser(r){
-  return {id:r.id,name:r.full_name||'',username:r.username||'',dept:r.department||'',role:r.role||'user',color:r.color||'#3b82f6'};
+  return {id:r.id,name:r.full_name||'',username:r.username||'',pass:r.user_password||'',dept:r.department||'',role:r.role||'user',color:r.color||'#3b82f6'};
 }
 function mapAnn(r){
   return {id:r.id,title:r.title||'',body:r.body||'',date:r.created_at?(r.created_at.split('T')[0]):'',author:r.author||'',type:r.type||'normal',readers:Array.isArray(r.readers)?r.readers:[]};
@@ -1550,20 +1550,20 @@ window.onload=function(){
     const e=document.getElementById('loginError');if(e)e.style.display='none';
   };
   document.getElementById('sbFoot').onclick=logout;
-  // استعادة الجلسة تلقائياً (عبر token آمن)
+  // استعادة الجلسة تلقائياً
   try{
     const saved=localStorage.getItem('itmam_session');
     if(saved){
-      const {token}=JSON.parse(saved);
-      if(token){
+      const {username,password}=JSON.parse(saved);
+      if(username&&password){
         showLoading();
-        db.rpc('verify_session',{p_token:token})
+        db.from('users').select('*').eq('username',username).eq('user_password',password).single()
           .then(async({data,error})=>{
             hideLoading();
-            if(error||!data||!data.length){localStorage.removeItem('itmam_session');return;}
-            currentUser=mapUser(data[0]);
+            if(error||!data){localStorage.removeItem('itmam_session');return;}
+            currentUser=mapUser(data);
             await ensureStorageBucket();
-            await loadAllData();
+    await loadAllData();
             const lp=document.getElementById('landingPage');lp.style.display='none';lp.style.height='0';lp.style.overflow='hidden';
             document.getElementById('appLayout').classList.add('show');
             document.getElementById('sbAv').textContent=currentUser.name[0];
@@ -1621,8 +1621,8 @@ async function login(){
   if(!username){toast('أدخل اسم المستخدم','err');return;}
   showLoading();
   try{
-    const {data,error}=await db.rpc('verify_login',{p_username:username,p_password:pass});
-    if(error||!data||!data.length){
+    const {data,error}=await db.from('users').select('*').eq('username',username).eq('user_password',pass).single();
+    if(error||!data){
       hideLoading();
       const errEl=document.getElementById('loginError');
       if(errEl){errEl.style.display='block';}
@@ -1632,10 +1632,9 @@ async function login(){
     }
     const errEl2=document.getElementById('loginError');
     if(errEl2) errEl2.style.display='none';
-    const userRow=data[0];
-    currentUser=mapUser(userRow);
-    // حفظ الجلسة في localStorage عبر token آمن (بدلاً من كلمة المرور)
-    localStorage.setItem('itmam_session', JSON.stringify({token:userRow.session_token}));
+    currentUser=mapUser(data);
+    // حفظ الجلسة في localStorage
+    localStorage.setItem('itmam_session', JSON.stringify({username:data.username, password:pass}));
     await loadAllData();
     hideModal('loginOverlay');
     const lp2=document.getElementById('landingPage');lp2.style.display='none';lp2.style.height='0';lp2.style.overflow='hidden';
@@ -1668,7 +1667,7 @@ async function ensureStorageBucket(){
 async function loadAllData(){
   const [tRes,uRes,aRes,cRes,kRes]=await Promise.all([
     db.from('tasks').select('*').order('created_at',{ascending:false}),
-    db.from('users_public').select('*').order('id',{ascending:true}),
+    db.from('users').select('*').order('id',{ascending:true}),
     db.from('announcements').select('*').order('created_at',{ascending:false}),
     db.from('complaints').select('*').order('created_at',{ascending:false}),
     db.from('kpi_tasks').select('*').order('created_at',{ascending:false}),
@@ -1683,14 +1682,6 @@ async function loadAllData(){
 function logout(){
   if(chatPolling)clearInterval(chatPolling);
   if(presencePolling)clearInterval(presencePolling);
-  // إنهاء الجلسة على السيرفر (لإلغاء الـ token نهائياً)
-  try{
-    const saved=localStorage.getItem('itmam_session');
-    if(saved){
-      const {token}=JSON.parse(saved);
-      if(token) db.rpc('end_session',{p_token:token});
-    }
-  }catch(e){}
   localStorage.removeItem('itmam_session');
   currentUser=null;tasks=[];users=[];announcements=[];complaints=[];kpiTasks=[];
   document.getElementById('landingPage').style.display='flex';
@@ -1995,7 +1986,7 @@ async function saveTask(){
       if(fd){
         const {data:ud}=db.storage.from('attachments').getPublicUrl(uploadPath);
         let furl=ud?.publicUrl||'';
-        if(!furl.includes('supabase.co')) furl='https://kecgxszssyqhosfwfigt.supabase.co/storage/v1/object/public/attachments/'+uploadPath;
+        if(!furl.includes('supabase.co')) furl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+uploadPath;
         editingFiles.push({name:file.name,url:furl,addedBy:'admin'});
       }
     }
@@ -2202,7 +2193,7 @@ async function submitTask(){
     if(!fe&&fd){
       const {data:ud}=db.storage.from('attachments').getPublicUrl(taskSubmitPath);
       fileUrl=ud?.publicUrl||'';
-      if(!fileUrl||!fileUrl.includes('supabase'))fileUrl='https://kecgxszssyqhosfwfigt.supabase.co/storage/v1/object/public/attachments/'+taskSubmitPath;
+      if(!fileUrl||!fileUrl.includes('supabase'))fileUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+taskSubmitPath;
       fileName=file.name; // الاسم الأصلي للعرض
     }
     hideLoading();
@@ -2468,16 +2459,9 @@ async function saveUser(){
   showLoading();
   const colors=['#3b82f6','#8b5cf6','#f59e0b','#22c55e','#ef4444'];
   const color=colors[users.length%5];
-  const {data,error}=await db.rpc('create_user',{
-    p_full_name:name,
-    p_username:username,
-    p_password:pass,
-    p_department:document.getElementById('fUDept').value,
-    p_role:document.getElementById('fURole').value,
-    p_color:color
-  });
+  const {data,error}=await db.from('users').insert({full_name:name,username,user_password:pass,department:document.getElementById('fUDept').value,role:document.getElementById('fURole').value,color}).select().single();
   hideLoading();
-  if(!error&&data&&data.length){users.push(mapUser(data[0]));hideModal('userModal');renderUsers();toast('تمت الإضافة');}
+  if(!error&&data){users.push(mapUser(data));hideModal('userModal');renderUsers();toast('تمت الإضافة');}
   else{toast('خطأ في الإضافة','err');console.error(error);}
 }
 
@@ -2729,7 +2713,7 @@ async function saveKpiTask(){
       if(!fe&&fd){
         const {data:ud}=db.storage.from('attachments').getPublicUrl(safePath2);
         var furl=ud?.publicUrl||'';
-        if(!furl||!furl.includes('supabase'))furl='https://kecgxszssyqhosfwfigt.supabase.co/storage/v1/object/public/attachments/'+safePath2;
+        if(!furl||!furl.includes('supabase'))furl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+safePath2;
         newFilesData.push({name:file.name,url:furl}); // name=الاسم الأصلي
       }
     }
@@ -2943,7 +2927,7 @@ async function submitKpiTask(id,fileInput,textInput){
     if(!fe&&fd){
       const {data:ud}=db.storage.from('attachments').getPublicUrl(submitPath);
       fileUrl=ud?.publicUrl||'';
-      if(!fileUrl||!fileUrl.includes('supabase'))fileUrl='https://kecgxszssyqhosfwfigt.supabase.co/storage/v1/object/public/attachments/'+submitPath;
+      if(!fileUrl||!fileUrl.includes('supabase'))fileUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+submitPath;
       fileName=file.name; // الاسم الأصلي
     }
     hideLoading();
@@ -3065,7 +3049,7 @@ async function uploadKpiFile(id,input){
       const {data:ud}=db.storage.from('attachments').getPublicUrl(safePath);
       var url=ud?.publicUrl||'';
       if(!url||!url.includes('supabase')){
-        url='https://kecgxszssyqhosfwfigt.supabase.co/storage/v1/object/public/attachments/'+safePath;
+        url='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+safePath;
       }
       newFiles.push({name:file.name,url:url}); // name=الاسم الأصلي, url=رابط الملف
     }
@@ -4239,7 +4223,7 @@ function renderFileLink(name, url){
   if(!name) return '';
   var finalUrl=url||'';
   if(finalUrl&&!finalUrl.startsWith('http')){
-    finalUrl='https://kecgxszssyqhosfwfigt.supabase.co/storage/v1/object/public/attachments/'+finalUrl;
+    finalUrl='https://xlmsbuztjxoadyxwexnc.supabase.co/storage/v1/object/public/attachments/'+finalUrl;
   }
   var color=fileColor(name);
   var displayName=name.length>25?name.substring(0,22)+'...':name;
